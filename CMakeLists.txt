@@ -49,12 +49,17 @@ set(COMMON_SRCS
     src/services/linter.c
 )
 
+set(TREE_SITTER_C_SRC
+    deps/usr/src/tree-sitter/c/0.24.1/parser/src/parser.c
+)
+
 # =============================================================================
 # Main Executable
 # =============================================================================
 add_executable(thiruthi
     src/main.c
     ${COMMON_SRCS}
+    ${TREE_SITTER_C_SRC}
     src/services/renderer.c
     src/ui/layout.c
 )
@@ -63,7 +68,6 @@ if(WIN32)
     target_link_libraries(thiruthi
         raylib
         tree-sitter
-        tree-sitter-c
         opengl32
         gdi32
         winmm
@@ -75,7 +79,6 @@ else()
     target_link_libraries(thiruthi
         raylib
         tree-sitter
-        tree-sitter-c
         m
         pthread
         dl
@@ -95,11 +98,11 @@ else()
 endif()
 add_test(NAME EditorTest COMMAND test_editor)
 
-add_executable(test_parser tests/test_parser.c src/services/parser.c src/common/memory.c)
+add_executable(test_parser tests/test_parser.c src/services/parser.c src/common/memory.c ${TREE_SITTER_C_SRC})
 if(WIN32)
-    target_link_libraries(test_parser tree-sitter tree-sitter-c kernel32)
+    target_link_libraries(test_parser tree-sitter kernel32)
 else()
-    target_link_libraries(test_parser tree-sitter tree-sitter-c dl)
+    target_link_libraries(test_parser tree-sitter dl)
 endif()
 add_test(NAME ParserTest COMMAND test_parser)
 
@@ -119,10 +122,10 @@ else()
 endif()
 add_test(NAME FileTest COMMAND test_file)
 
-add_executable(test_integration tests/test_integration.c ${COMMON_SRCS})
+add_executable(test_integration tests/test_integration.c ${COMMON_SRCS} ${TREE_SITTER_C_SRC})
 if(WIN32)
-    target_link_libraries(test_integration tree-sitter tree-sitter-c kernel32)
+    target_link_libraries(test_integration tree-sitter kernel32)
 else()
-    target_link_libraries(test_integration tree-sitter tree-sitter-c dl)
+    target_link_libraries(test_integration tree-sitter dl)
 endif()
 add_test(NAME IntegrationTest COMMAND test_integration)
