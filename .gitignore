@@ -1,0 +1,28 @@
+# Build directory
+build/
+bin/
+out/
+
+# Object and library files
+*.o
+*.obj
+*.a
+*.lib
+*.so
+*.dll
+*.dylib
+
+# Executables
+*.exe
+thiruthi
+
+# OS and Editor artifacts
+*.Zone.Identifier
+.vscode/
+.vs/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
