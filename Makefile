@@ -28,6 +28,7 @@ SRCS = src/main.c \
        src/services/lsp.c \
        src/services/formatter.c \
        src/services/linter.c \
+       src/services/completion.c \
        src/services/renderer.c \
        src/ui/layout.c
 
