@@ -13,6 +13,7 @@
 #include "services/lsp.h"
 #include "services/formatter.h"
 #include "services/linter.h"
+#include "services/completion.h"
 #include "services/renderer.h"
 #include "ui/layout.h"
 
@@ -173,9 +174,144 @@ static void trigger_save(ThiruthiApp *app) {
 
 /* --- Input Handling --- */
 
+static char keycode_to_ascii(int key, bool shift) {
+    if (key >= KEY_A && key <= KEY_Z) {
+        char letter = (char)('a' + (key - KEY_A));
+        bool caps = IsKeyDown(KEY_CAPS_LOCK);
+        if (shift != caps) letter = (char)(letter - ('a' - 'A'));
+        return letter;
+    }
+
+    if (key >= KEY_ZERO && key <= KEY_NINE) {
+        static const char shifted_digits[] = ")!@#$%^&*(";
+        return shift ? shifted_digits[key - KEY_ZERO] : (char)('0' + key - KEY_ZERO);
+    }
+
+    if (key == KEY_SPACE) return ' ';
+    if (key == KEY_APOSTROPHE) return shift ? '"' : '\'';
+    if (key == KEY_COMMA) return shift ? '<' : ',';
+    if (key == KEY_MINUS) return shift ? '_' : '-';
+    if (key == KEY_PERIOD) return shift ? '>' : '.';
+    if (key == KEY_SLASH) return shift ? '?' : '/';
+    if (key == KEY_SEMICOLON) return shift ? ':' : ';';
+    if (key == KEY_EQUAL) return shift ? '+' : '=';
+    if (key == KEY_LEFT_BRACKET) return shift ? '{' : '[';
+    if (key == KEY_BACKSLASH) return shift ? '|' : '\\';
+    if (key == KEY_RIGHT_BRACKET) return shift ? '}' : ']';
+    if (key == KEY_GRAVE) return shift ? '~' : '`';
+    return '\0';
+}
+
+static void trigger_completion(ThiruthiApp *app) {
+    char prefix[64] = {0};
+    uint32_t start_col = 0;
+    if (th_editor_get_word_prefix(&app->editor, prefix, sizeof(prefix), &start_col)) {
+        if (strlen(prefix) >= 1) {
+            th_completion_populate(&app->ui.completion_list, &app->editor, prefix);
+            if (app->ui.completion_list.count > 0) {
+                app->ui.completion_popup_active = true;
+                app->ui.completion_selected_idx = 0;
+                return;
+            }
+        }
+    }
+    app->ui.completion_popup_active = false;
+}
+
+static void handle_text_input(ThiruthiApp *app, bool shift, bool ctrl, bool alt, bool super_key) {
+    if (ctrl || alt || super_key) return;
+
+    bool received_character = false;
+    int character;
+
+    while ((character = GetCharPressed()) > 0) {
+        received_character = true;
+        if (character >= 32 && character <= 126) {
+            th_editor_insert_char(&app->editor, (char)character);
+            app->last_edit_time = GetTime();
+            if (character == '.' || character == '>') {
+                th_lsp_request_completion(&app->lsp, app->editor.filepath, app->editor.cursor);
+            }
+        }
+    }
+
+    /* Some Windows/MinGW Raylib builds do not populate the character queue.
+       Fallback: convert key codes to ASCII, but skip keys that are handled
+       elsewhere as editing/navigation commands (arrows, enter, backspace, etc.)
+       to prevent double-processing. */
+    if (!received_character) {
+        int key;
+        while ((key = GetKeyPressed()) > 0) {
+            /* Skip non-printable / editing / navigation keys */
+            if (key == KEY_BACKSPACE || key == KEY_DELETE || key == KEY_ENTER ||
+                key == KEY_TAB || key == KEY_ESCAPE ||
+                key == KEY_UP || key == KEY_DOWN || key == KEY_LEFT || key == KEY_RIGHT ||
+                key == KEY_HOME || key == KEY_END || key == KEY_PAGE_UP || key == KEY_PAGE_DOWN ||
+                key == KEY_INSERT || key == KEY_CAPS_LOCK ||
+                key == KEY_LEFT_SHIFT || key == KEY_RIGHT_SHIFT ||
+                key == KEY_LEFT_CONTROL || key == KEY_RIGHT_CONTROL ||
+                key == KEY_LEFT_ALT || key == KEY_RIGHT_ALT ||
+                key == KEY_LEFT_SUPER || key == KEY_RIGHT_SUPER ||
+                (key >= KEY_F1 && key <= KEY_F12)) {
+                continue;
+            }
+            char ascii = keycode_to_ascii(key, shift);
+            if (ascii != '\0') {
+                received_character = true;
+                th_editor_insert_char(&app->editor, ascii);
+                app->last_edit_time = GetTime();
+                if (ascii == '.' || ascii == '>') {
+                    th_lsp_request_completion(&app->lsp, app->editor.filepath, app->editor.cursor);
+                }
+            }
+        }
+    }
+
+    if (received_character) {
+        trigger_completion(app);
+    }
+}
+
 static void handle_keyboard_input(ThiruthiApp *app) {
     bool ctrl = IsKeyDown(KEY_LEFT_CONTROL) || IsKeyDown(KEY_RIGHT_CONTROL);
     bool shift = IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT);
+    bool alt = IsKeyDown(KEY_LEFT_ALT) || IsKeyDown(KEY_RIGHT_ALT);
+    bool super_key = IsKeyDown(KEY_LEFT_SUPER) || IsKeyDown(KEY_RIGHT_SUPER);
+
+    /* Autocomplete Popup Keyboard Navigation */
+    if (app->ui.completion_popup_active && app->ui.completion_list.count > 0) {
+        if (IsKeyPressed(KEY_ESCAPE)) {
+            app->ui.completion_popup_active = false;
+            return;
+        }
+        if (IsKeyPressed(KEY_DOWN)) {
+            app->ui.completion_selected_idx = (app->ui.completion_selected_idx + 1) % app->ui.completion_list.count;
+            return;
+        }
+        if (IsKeyPressed(KEY_UP)) {
+            app->ui.completion_selected_idx = (app->ui.completion_selected_idx - 1 + app->ui.completion_list.count) % app->ui.completion_list.count;
+            return;
+        }
+        if (IsKeyPressed(KEY_TAB) || IsKeyPressed(KEY_ENTER)) {
+            int sel_idx = app->ui.completion_selected_idx;
+            if (sel_idx >= 0 && sel_idx < (int)app->ui.completion_list.count) {
+                char prefix[64] = {0};
+                uint32_t start_col = 0;
+                th_editor_get_word_prefix(&app->editor, prefix, sizeof(prefix), &start_col);
+                th_editor_apply_completion(&app->editor, start_col, app->ui.completion_list.items[sel_idx].insert_text);
+                app->last_edit_time = GetTime();
+            }
+            app->ui.completion_popup_active = false;
+            while (GetCharPressed() > 0) {}
+            return;
+        }
+    }
+
+    /* Ctrl+Space: Manually trigger Autocomplete */
+    if (ctrl && IsKeyPressed(KEY_SPACE)) {
+        trigger_completion(app);
+        return;
+    }
 
     /* Direct shortcut for Settings: Ctrl+, or Ctrl+; */
     if (ctrl && (IsKeyPressed(KEY_COMMA) || IsKeyPressed(KEY_SEMICOLON))) {
@@ -183,6 +319,13 @@ static void handle_keyboard_input(ThiruthiApp *app) {
         if (app->ui.settings_open) {
             th_ui_set_status(&app->ui, "Settings opened (L: Line Numbers, F: Font, +/-: Size, T: Tabs, Esc: Close)", TH_STATUS_INFO);
         }
+        return;
+    }
+
+    if (ctrl && IsKeyPressed(KEY_T)) {
+        ThThemeId next_theme = (ThThemeId)((app->config.editor.theme_id + 1) % TH_THEME_COUNT);
+        th_config_set_theme(&app->config, next_theme);
+        th_ui_set_status(&app->ui, th_config_get_theme_name(next_theme), TH_STATUS_INFO);
         return;
     }
 
@@ -227,18 +370,16 @@ static void handle_keyboard_input(ThiruthiApp *app) {
         if (IsKeyPressed(KEY_F)) {
             static int s_font_idx = 0;
             const char *fonts[] = {
-                "C:\\Windows\\Fonts\\consola.ttf",
                 "C:\\Windows\\Fonts\\CascadiaMono.ttf",
-                "C:\\Windows\\Fonts\\cour.ttf",
-                "c:\\Windows\\Fonts\\JetBrainsMono Nerd Font.ttf"
+                "C:\\Windows\\Fonts\\consola.ttf",
+                "C:\\Windows\\Fonts\\cour.ttf"
             };
             const char *font_names[] = {
-                "Consolas",
                 "Cascadia Mono",
-                "Courier New",
-                "Raylib Default"
+                "Consolas",
+                "Courier New"
             };
-            s_font_idx = (s_font_idx + 1) % 4;
+            s_font_idx = (s_font_idx + 1) % 3;
             strncpy(app->config.editor.font_path, fonts[s_font_idx], sizeof(app->config.editor.font_path) - 1);
             th_renderer_load_font(&app->renderer, app->config.editor.font_path, app->config.editor.font_size);
             char fmsg[128];
@@ -582,37 +723,39 @@ static void handle_keyboard_input(ThiruthiApp *app) {
         th_editor_move_cursor(&app->editor, app->editor.visible_lines, 0, shift);
     }
 
-    /* Editing Keys */
+    /* Editing Keys — must return early to prevent handle_text_input from
+       consuming the key queue and swallowing real text keystrokes. */
     if (IsKeyPressed(KEY_BACKSPACE) || IsKeyPressedRepeat(KEY_BACKSPACE)) {
         th_editor_backspace(&app->editor);
         app->last_edit_time = GetTime();
+        th_renderer_reset_cursor_blink(&app->renderer);
+        trigger_completion(app);
+        return;
     }
     if (IsKeyPressed(KEY_DELETE) || IsKeyPressedRepeat(KEY_DELETE)) {
         th_editor_delete(&app->editor);
         app->last_edit_time = GetTime();
+        th_renderer_reset_cursor_blink(&app->renderer);
+        trigger_completion(app);
+        return;
     }
     if (IsKeyPressed(KEY_ENTER) || IsKeyPressedRepeat(KEY_ENTER)) {
         th_editor_insert_newline(&app->editor);
         app->last_edit_time = GetTime();
+        /* Drain any char queue entries produced by Enter key */
+        while (GetCharPressed() > 0) {}
+        th_renderer_reset_cursor_blink(&app->renderer);
+        return;
     }
     if (IsKeyPressed(KEY_TAB)) {
         th_editor_indent(&app->editor, shift);
         app->last_edit_time = GetTime();
+        th_renderer_reset_cursor_blink(&app->renderer);
+        return;
     }
 
     /* Character Input */
-    int key = 0;
-    while ((key = GetCharPressed()) > 0) {
-        if (key >= 32 && key <= 126) {
-            th_editor_insert_char(&app->editor, (char)key);
-            app->last_edit_time = GetTime();
-
-            /* Trigger completion on '.' or '->' */
-            if (key == '.' || key == '>') {
-                th_lsp_request_completion(&app->lsp, app->editor.filepath, app->editor.cursor);
-            }
-        }
-    }
+    handle_text_input(app, shift, ctrl, alt, super_key);
 
     th_renderer_reset_cursor_blink(&app->renderer);
 
@@ -651,7 +794,7 @@ static void handle_mouse_input(ThiruthiApp *app) {
             }
 
             /* Row 1: Line Numbers Mode */
-            if (mouse.y >= my + 55 && mouse.y <= my + 95) {
+            if (mouse.y >= my + 55 && mouse.y <= my + 105) {
                 if (app->config.editor.line_number_mode == TH_LINE_NUMBERS_STATIC) {
                     app->config.editor.line_number_mode = TH_LINE_NUMBERS_RELATIVE;
                     th_ui_set_status(&app->ui, "Line numbers: Relative (Vim-style)", TH_STATUS_INFO);
@@ -665,18 +808,26 @@ static void handle_mouse_input(ThiruthiApp *app) {
                 return;
             }
 
-            /* Row 2: Editor Font */
-            if (mouse.y >= my + 100 && mouse.y <= my + 145) {
+            /* Row 2: Theme */
+            if (mouse.y >= my + 105 && mouse.y <= my + 155) {
+                ThThemeId next_theme = (ThThemeId)((app->config.editor.theme_id + 1) % TH_THEME_COUNT);
+                th_config_set_theme(&app->config, next_theme);
+                th_ui_set_status(&app->ui, th_config_get_theme_name(next_theme), TH_STATUS_INFO);
+                return;
+            }
+
+            /* Row 3: Editor Font */
+            if (mouse.y >= my + 155 && mouse.y <= my + 205) {
                 static int s_mouse_font_idx = 0;
                 const char *fonts[] = {
-                    "C:\\Windows\\Fonts\\consola.ttf",
                     "C:\\Windows\\Fonts\\CascadiaMono.ttf",
+                    "C:\\Windows\\Fonts\\consola.ttf",
                     "C:\\Windows\\Fonts\\cour.ttf",
                     ""
                 };
                 const char *font_names[] = {
-                    "Consolas",
                     "Cascadia Mono",
+                    "Consolas",
                     "Courier New",
                     "Raylib Default"
                 };
@@ -689,8 +840,8 @@ static void handle_mouse_input(ThiruthiApp *app) {
                 return;
             }
 
-            /* Row 3: Font Size (+2 px, cycles at 26) */
-            if (mouse.y >= my + 150 && mouse.y <= my + 195) {
+            /* Row 4: Font Size (+2 px, cycles at 26) */
+            if (mouse.y >= my + 205 && mouse.y <= my + 255) {
                 app->config.editor.font_size += 2;
                 if (app->config.editor.font_size > 26) app->config.editor.font_size = 12;
                 app->config.editor.line_height = app->config.editor.font_size + 8;
@@ -701,8 +852,8 @@ static void handle_mouse_input(ThiruthiApp *app) {
                 return;
             }
 
-            /* Row 4: Tab Size */
-            if (mouse.y >= my + 200 && mouse.y <= my + 245) {
+            /* Row 5: Tab Size */
+            if (mouse.y >= my + 255 && mouse.y <= my + 305) {
                 if (app->config.editor.tab_size == 2) app->config.editor.tab_size = 4;
                 else if (app->config.editor.tab_size == 4) app->config.editor.tab_size = 8;
                 else app->config.editor.tab_size = 2;
@@ -712,8 +863,8 @@ static void handle_mouse_input(ThiruthiApp *app) {
                 return;
             }
 
-            /* Row 5: Cursor Style */
-            if (mouse.y >= my + 250 && mouse.y <= my + 295) {
+            /* Row 6: Cursor Style */
+            if (mouse.y >= my + 305 && mouse.y <= my + 355) {
                 if (app->config.editor.cursor_style == TH_CURSOR_BAR) {
                     app->config.editor.cursor_style = TH_CURSOR_BLOCK;
                     th_ui_set_status(&app->ui, "Cursor style: Block (█)", TH_STATUS_INFO);
@@ -728,8 +879,8 @@ static void handle_mouse_input(ThiruthiApp *app) {
                 return;
             }
 
-            /* Row 6: Cursor Blink */
-            if (mouse.y >= my + 300 && mouse.y <= my + 345) {
+            /* Row 7: Cursor Blink */
+            if (mouse.y >= my + 355 && mouse.y <= my + 405) {
                 app->config.editor.cursor_blink = !app->config.editor.cursor_blink;
                 char bmsg[64];
                 snprintf(bmsg, sizeof(bmsg), "Cursor blink: %s", app->config.editor.cursor_blink ? "Enabled" : "Disabled");
@@ -891,7 +1042,11 @@ int main(int argc, char **argv) {
 
     /* 12. Main Application Loop */
     while (!th_renderer_should_close(&g_app.renderer)) {
-        PollInputEvents();
+        /* NOTE: Do NOT call PollInputEvents() here. In Raylib 6.x,
+           EndDrawing() already calls PollInputEvents() at the end of
+           each frame, buffering events for the next iteration.
+           Calling it again here would overwrite those buffered events
+           with an empty poll, causing typed characters to be lost. */
 
         /* Process User Inputs */
         handle_keyboard_input(&g_app);
@@ -901,13 +1056,13 @@ int main(int argc, char **argv) {
         update_services(&g_app);
 
         /* Begin Frame Layout */
-        th_renderer_begin_frame(&g_app.renderer);
+        th_renderer_begin_frame(&g_app.renderer, &g_app.config.editor);
 
         /* Build Clay Layout Tree */
         th_ui_build_layout(&g_app.ui, &g_app.editor, &g_app.config, &g_app.parser, &g_app.renderer);
 
         /* End Frame & Raylib Render */
-        th_renderer_end_frame(&g_app.renderer);
+        th_renderer_end_frame(&g_app.renderer, &g_app.config.editor.theme);
     }
 
     /* 13. Graceful Microservice Shutdown */
