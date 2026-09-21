@@ -9,7 +9,9 @@
 #include "renderer.h"
 #include "editor.h"
 #include "parser.h"
+#include "../ui/layout.h"
 #include "../common/memory.h"
+#include "../common/platform.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
@@ -86,6 +88,9 @@ static void th_render_code_canvas_custom(Rectangle bb, const ThCodeCanvasRenderD
     BeginScissorMode((int)roundf(bb.x), (int)roundf(bb.y),
                      (int)roundf(bb.width), (int)roundf(bb.height));
 
+    /* 0. Solid Canvas Background */
+    DrawRectangleRec(bb, th_color_to_raylib(theme->bg_main));
+
     float pad_x = 8.0f;
     float pad_y = 4.0f;
 
@@ -98,7 +103,27 @@ static void th_render_code_canvas_custom(Rectangle bb, const ThCodeCanvasRenderD
                          th_color_to_raylib(theme->bg_active_line));
     }
 
-    /* 2. Selection highlight */
+    /* 2. Indent Guides */
+    uint32_t tab_sz = data->config->editor.tab_size > 0 ? data->config->editor.tab_size : 4;
+    Color guide_col = (Color){ theme->border.r, theme->border.g, theme->border.b, 65 };
+    for (int i = 0; i < visible && (scroll_line + i) < (int)data->editor->line_count; i++) {
+        int li = scroll_line + i;
+        size_t l_len = 0;
+        const char *lt = th_editor_get_line(data->editor, li, &l_len);
+        if (!lt || l_len == 0) continue;
+
+        uint32_t spaces = 0;
+        while (spaces < l_len && (lt[spaces] == ' ' || lt[spaces] == '\t')) {
+            spaces += (lt[spaces] == '\t') ? tab_sz : 1;
+        }
+        for (uint32_t col = tab_sz; col < spaces; col += tab_sz) {
+            float gx = bb.x + pad_x + col * char_w;
+            float gy = bb.y + pad_y + i * line_h;
+            DrawLine((int)roundf(gx), (int)roundf(gy), (int)roundf(gx), (int)roundf(gy + line_h), guide_col);
+        }
+    }
+
+    /* 3. Selection highlight */
     if (th_editor_has_selection(data->editor)) {
         ThRange sel = th_editor_get_selection_range(data->editor);
         for (int i = 0; i < visible && (scroll_line + i) < (int)data->editor->line_count; i++) {
@@ -119,7 +144,7 @@ static void th_render_code_canvas_custom(Rectangle bb, const ThCodeCanvasRenderD
         }
     }
 
-    /* 3. Syntax-highlighted text lines */
+    /* 4. Syntax-highlighted text lines */
     for (int i = 0; i < visible && (scroll_line + i) < (int)data->editor->line_count; i++) {
         int li = scroll_line + i;
         size_t line_len = 0;
@@ -167,12 +192,35 @@ static void th_render_code_canvas_custom(Rectangle bb, const ThCodeCanvasRenderD
         }
     }
 
-    /* 4. Cursor Rendering */
+    /* 5. Matching Bracket Highlight */
+    ThPosition match_pos;
+    if (th_editor_find_matching_bracket(data->editor, data->editor->cursor, &match_pos)) {
+        Color match_col = th_color_to_raylib(theme->accent);
+        int cur_l_scr = (int)data->editor->cursor.line - scroll_line;
+        if (cur_l_scr >= 0 && cur_l_scr < visible) {
+            float bx = bb.x + pad_x + data->editor->cursor.col * char_w;
+            float by = bb.y + pad_y + cur_l_scr * line_h;
+            DrawRectangleLines((int)roundf(bx), (int)roundf(by), (int)roundf(char_w), (int)roundf(line_h), match_col);
+        }
+        int mat_l_scr = (int)match_pos.line - scroll_line;
+        if (mat_l_scr >= 0 && mat_l_scr < visible) {
+            float bx = bb.x + pad_x + match_pos.col * char_w;
+            float by = bb.y + pad_y + mat_l_scr * line_h;
+            DrawRectangleLines((int)roundf(bx), (int)roundf(by), (int)roundf(char_w), (int)roundf(line_h), match_col);
+        }
+    }
+
+    /* 6. Cursor Rendering */
+    float cx = 0;
+    float cy = 0;
+    bool cursor_on_screen = false;
+
     if (data->editor->cursor.line >= (size_t)scroll_line &&
         data->editor->cursor.line < (size_t)(scroll_line + visible)) {
         int cur_line_screen = (int)data->editor->cursor.line - scroll_line;
-        float cx = bb.x + pad_x + data->editor->cursor.col * char_w;
-        float cy = bb.y + pad_y + cur_line_screen * line_h;
+        cx = bb.x + pad_x + data->editor->cursor.col * char_w;
+        cy = bb.y + pad_y + cur_line_screen * line_h;
+        cursor_on_screen = true;
         Color cursor_color = th_color_to_raylib(theme->cursor);
 
         bool show_cursor = !data->config->editor.cursor_blink || (data->renderer && data->renderer->cursor_visible);
@@ -208,6 +256,75 @@ static void th_render_code_canvas_custom(Rectangle bb, const ThCodeCanvasRenderD
     }
 
     EndScissorMode();
+
+    /* 7. Floating Autocomplete Popup (rendered outside canvas scissor) */
+    if (data->ui && data->ui->completion_popup_active && data->ui->completion_list.count > 0 && cursor_on_screen) {
+        float pop_w = 280.0f;
+        int max_items = 7;
+        int total_items = (int)data->ui->completion_list.count;
+        int show_items = total_items < max_items ? total_items : max_items;
+        float item_h = 24.0f;
+        float pop_h = show_items * item_h + 8.0f;
+
+        float pop_x = cx;
+        float pop_y = cy + line_h + 4.0f;
+
+        /* Prevent clipping against screen boundaries */
+        if (pop_x + pop_w > bb.x + bb.width - 12.0f) {
+            pop_x = bb.x + bb.width - pop_w - 12.0f;
+        }
+        if (pop_x < bb.x + 8.0f) {
+            pop_x = bb.x + 8.0f;
+        }
+        if (pop_y + pop_h > (float)GetScreenHeight() - 32.0f) {
+            pop_y = cy - pop_h - 4.0f;
+        }
+
+        /* Draw popup container */
+        Color pop_bg = th_color_to_raylib(theme->bg_surface);
+        Color pop_border = th_color_to_raylib(theme->border);
+        DrawRectangleRounded((Rectangle){pop_x, pop_y, pop_w, pop_h}, 0.12f, 6, pop_bg);
+        DrawRectangleRoundedLines((Rectangle){pop_x, pop_y, pop_w, pop_h}, 0.12f, 6, pop_border);
+
+        int selected = data->ui->completion_selected_idx;
+        int start_idx = 0;
+        if (selected >= show_items) {
+            start_idx = selected - show_items + 1;
+        }
+
+        for (int k = 0; k < show_items; k++) {
+            int item_idx = start_idx + k;
+            if (item_idx >= total_items) break;
+            const ThCompletionItem *ci = &data->ui->completion_list.items[item_idx];
+
+            float iy = pop_y + 4.0f + k * item_h;
+            bool is_sel = (item_idx == selected);
+
+            if (is_sel) {
+                DrawRectangleRounded((Rectangle){pop_x + 4.0f, iy, pop_w - 8.0f, item_h}, 0.15f, 4,
+                                     th_color_to_raylib(theme->bg_selection));
+            }
+
+            /* Kind tag */
+            const char *tag = "[id]";
+            Color tag_col = th_color_to_raylib(theme->text_gutter);
+            if (ci->kind == 14) { tag = "[kw]"; tag_col = th_color_to_raylib(theme->token_keyword); }
+            else if (ci->kind == 6) { tag = "[typ]"; tag_col = th_color_to_raylib(theme->token_type); }
+            else if (ci->kind == 2) { tag = "[fn]"; tag_col = th_color_to_raylib(theme->token_function); }
+
+            DrawTextEx(fontToUse, tag, (Vector2){pop_x + 8.0f, iy + 4.0f}, 13.0f, 0, tag_col);
+
+            /* Symbol label */
+            Color lbl_col = is_sel ? th_color_to_raylib(theme->accent) : th_color_to_raylib(theme->text_normal);
+            DrawTextEx(fontToUse, ci->label, (Vector2){pop_x + 50.0f, iy + 4.0f}, 13.0f, 0, lbl_col);
+
+            /* Detail info */
+            if (ci->detail[0]) {
+                DrawTextEx(fontToUse, ci->detail, (Vector2){pop_x + 150.0f, iy + 4.0f}, 11.0f, 0,
+                           th_color_to_raylib(theme->text_gutter));
+            }
+        }
+    }
 }
 
 /* --- Clay Raylib Render Dispatcher --- */
@@ -342,14 +459,30 @@ bool th_renderer_load_font(ThRendererService *service, const char *font_path, in
     if (!service) return false;
     if (font_size <= 0) font_size = 17;
 
-    const char *candidates[4];
+    const char *candidates[16];
     int cand_count = 0;
+    char local_font_paths[6][512] = {{0}};
 
     if (font_path && font_path[0]) {
         candidates[cand_count++] = font_path;
     }
-    candidates[cand_count++] = "C:\\Windows\\Fonts\\consola.ttf";
+
+#if TH_PLATFORM_WINDOWS
+    /* Check user-local fonts first (.ttf only — .ttc collections don't render in custom canvas) */
+    const char *local_app_data = getenv("LOCALAPPDATA");
+    if (local_app_data && local_app_data[0]) {
+        snprintf(local_font_paths[0], sizeof(local_font_paths[0]), "%s\\Microsoft\\Windows\\Fonts\\JetBrainsMono Nerd Font-Regular.ttf", local_app_data);
+        snprintf(local_font_paths[1], sizeof(local_font_paths[1]), "%s\\Microsoft\\Windows\\Fonts\\JetBrainsMono Nerd Font Mono-Regular.ttf", local_app_data);
+        snprintf(local_font_paths[2], sizeof(local_font_paths[2]), "%s\\Microsoft\\Windows\\Fonts\\JetBrainsMonoNL Nerd Font-Regular.ttf", local_app_data);
+        for (int i = 0; i < 3; i++) candidates[cand_count++] = local_font_paths[i];
+    }
+#endif
+    /* System-wide font candidates (.ttf only) */
     candidates[cand_count++] = "C:\\Windows\\Fonts\\CascadiaMono.ttf";
+    candidates[cand_count++] = "C:\\Windows\\Fonts\\consola.ttf";
+    candidates[cand_count++] = "C:\\Windows\\Fonts\\JetBrainsMono Nerd Font-Regular.ttf";
+    candidates[cand_count++] = "C:\\Windows\\Fonts\\JetBrainsMono Nerd Font Mono-Regular.ttf";
+    candidates[cand_count++] = "C:\\Windows\\Fonts\\JetBrainsMonoNL Nerd Font-Regular.ttf";
     candidates[cand_count++] = "C:\\Windows\\Fonts\\cour.ttf";
 
     for (int i = 0; i < cand_count; i++) {
@@ -408,13 +541,14 @@ void th_renderer_handle_resize(ThRendererService *service) {
     }
 }
 
-void th_renderer_begin_frame(ThRendererService *service) {
+void th_renderer_begin_frame(ThRendererService *service, const ThEditorConfig *config) {
     if (!service) return;
     th_renderer_handle_resize(service);
 
     /* Blink cursor every 500ms */
     double now = GetTime();
-    if (now - service->last_cursor_blink_time >= 0.5) {
+    float blink_rate = config && config->cursor_blink_rate > 0.0f ? config->cursor_blink_rate : 0.5f;
+    if (now - service->last_cursor_blink_time >= blink_rate) {
         service->cursor_visible = !service->cursor_visible;
         service->last_cursor_blink_time = now;
     }
@@ -429,13 +563,13 @@ void th_renderer_begin_frame(ThRendererService *service) {
     Clay_BeginLayout();
 }
 
-void th_renderer_end_frame(ThRendererService *service) {
+void th_renderer_end_frame(ThRendererService *service, const ThTheme *theme) {
     if (!service) return;
 
     Clay_RenderCommandArray commands = Clay_EndLayout(GetFrameTime());
 
     BeginDrawing();
-    ClearBackground((Color){24, 24, 24, 255});
+    ClearBackground(theme ? th_color_to_raylib(theme->bg_main) : (Color){24, 24, 24, 255});
 
     Clay_Raylib_Render(commands, &service->editor_font);
 

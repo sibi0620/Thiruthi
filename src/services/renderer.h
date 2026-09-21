@@ -35,20 +35,23 @@ typedef struct {
 #include "editor.h"
 #include "parser.h"
 
+typedef struct ThUIState ThUIState;
+
 typedef struct {
     const ThEditor *editor;
     const ThConfigService *config;
     const ThParserService *parser;
     const ThRendererService *renderer;
     const ThTheme *theme;
+    const ThUIState *ui;
 } ThCodeCanvasRenderData;
 
 void th_renderer_init(ThRendererService *service, int width, int height, const char *title);
 void th_renderer_shutdown(ThRendererService *service);
 
 bool th_renderer_should_close(const ThRendererService *service);
-void th_renderer_begin_frame(ThRendererService *service);
-void th_renderer_end_frame(ThRendererService *service);
+void th_renderer_begin_frame(ThRendererService *service, const ThEditorConfig *config);
+void th_renderer_end_frame(ThRendererService *service, const ThTheme *theme);
 
 void th_renderer_handle_resize(ThRendererService *service);
 bool th_renderer_load_font(ThRendererService *service, const char *font_path, int font_size);

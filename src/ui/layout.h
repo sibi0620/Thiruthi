@@ -34,7 +34,7 @@ typedef struct {
     char line_input[32];
 } ThGoToLineState;
 
-typedef struct {
+typedef struct ThUIState {
     ThDiagnosticList diagnostics;
     ThCompletionList completion_list;
     bool completion_popup_active;

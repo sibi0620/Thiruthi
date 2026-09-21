@@ -55,6 +55,13 @@ void th_ui_shutdown(ThUIState *ui) {
     }
     ui->diagnostics.count = 0;
     ui->diagnostics.capacity = 0;
+
+    if (ui->completion_list.items) {
+        th_free(ui->completion_list.items);
+        ui->completion_list.items = NULL;
+    }
+    ui->completion_list.count = 0;
+    ui->completion_list.capacity = 0;
 }
 
 void th_ui_set_status(ThUIState *ui, const char *msg, ThStatusLevel type) {
@@ -303,10 +310,62 @@ static void build_gutter(const ThEditor *editor, const ThConfigService *config, 
 }
 
 /* =====================================================================
+ *  Breadcrumbs / Scope Bar
+ * ===================================================================== */
+
+static void build_breadcrumbs_bar(
+    const ThEditor *editor,
+    const ThParserService *parser,
+    const ThTheme *theme
+) {
+    char scope_buf[128] = {0};
+    bool has_scope = false;
+    if (parser && editor) {
+        has_scope = th_parser_get_enclosing_scope(parser, editor->cursor.line, scope_buf, sizeof(scope_buf));
+    }
+
+    const char *fname = (editor && editor->filepath[0]) ? editor->filepath : "Untitled";
+    const char *slash = strrchr(fname, '/');
+    if (!slash) slash = strrchr(fname, '\\');
+    const char *base_name = slash ? (slash + 1) : fname;
+
+    CLAY(CLAY_ID("BreadcrumbsBar"), {
+        .layout = {
+            .sizing = { .width = CLAY_SIZING_GROW(0), .height = CLAY_SIZING_FIXED(24) },
+            .padding = { .left = 14, .right = 14 },
+            .layoutDirection = CLAY_LEFT_TO_RIGHT,
+            .childAlignment = { .y = CLAY_ALIGN_Y_CENTER },
+            .childGap = 8
+        },
+        .backgroundColor = { theme->bg_surface.r, theme->bg_surface.g, theme->bg_surface.b, 255 }
+    }) {
+        Clay_String file_item = ui_dyn_str("📁 %s", base_name);
+        CLAY_TEXT(file_item, {
+            .fontSize = 11,
+            .textColor = { theme->text_gutter.r, theme->text_gutter.g, theme->text_gutter.b, 255 }
+        });
+
+        if (has_scope && scope_buf[0]) {
+            CLAY_TEXT(clay_str("›"), {
+                .fontSize = 11,
+                .textColor = { theme->text_gutter.r, theme->text_gutter.g, theme->text_gutter.b, 180 }
+            });
+
+            Clay_String scope_item = ui_dyn_str("⚡ %s", scope_buf);
+            CLAY_TEXT(scope_item, {
+                .fontSize = 11,
+                .textColor = { theme->accent.r, theme->accent.g, theme->accent.b, 255 }
+            });
+        }
+    }
+}
+
+/* =====================================================================
  *  Code Canvas
  * ===================================================================== */
 
 static void build_code_canvas(
+    const ThUIState *ui,
     const ThEditor *editor,
     const ThConfigService *config,
     const ThParserService *parser,
@@ -319,12 +378,12 @@ static void build_code_canvas(
     s_canvas_data.parser = parser;
     s_canvas_data.renderer = renderer;
     s_canvas_data.theme = theme;
+    s_canvas_data.ui = ui;
 
     CLAY(CLAY_ID("CodeCanvas"), {
         .layout = {
             .sizing = { .width = CLAY_SIZING_GROW(0), .height = CLAY_SIZING_GROW(0) }
         },
-        .backgroundColor = { theme->bg_main.r, theme->bg_main.g, theme->bg_main.b, theme->bg_main.a },
         .custom = {
             .customData = &s_canvas_data
         }
@@ -592,7 +651,32 @@ static void build_settings_modal(const ThUIState *ui, const ThConfigService *con
                 });
             }
 
-            /* Option 2: Font Selection */
+            /* Option 2: Theme */
+            CLAY(CLAY_ID("SettingRowTheme"), {
+                .layout = {
+                    .sizing = { .width = CLAY_SIZING_GROW(0), .height = CLAY_SIZING_FIXED(38) },
+                    .padding = { .left = 12, .right = 12 },
+                    .layoutDirection = CLAY_LEFT_TO_RIGHT,
+                    .childAlignment = { .y = CLAY_ALIGN_Y_CENTER },
+                    .childGap = 16
+                },
+                .backgroundColor = { theme->bg_main.r, theme->bg_main.g, theme->bg_main.b, 255 },
+                .cornerRadius = CLAY_CORNER_RADIUS(4)
+            }) {
+                CLAY_TEXT(clay_str("Theme:"), {
+                    .fontSize = 14,
+                    .textColor = { theme->text_normal.r, theme->text_normal.g, theme->text_normal.b, 255 }
+                });
+
+                Clay_String theme_value = ui_dyn_str("[ %s ]  (Press Ctrl+T to cycle)",
+                                                     th_config_get_theme_name(config->editor.theme_id));
+                CLAY_TEXT(theme_value, {
+                    .fontSize = 13,
+                    .textColor = { theme->accent.r, theme->accent.g, theme->accent.b, 255 }
+                });
+            }
+
+            /* Option 3: Font Selection */
             const char *font_display = config->editor.font_path[0] ? config->editor.font_path : "Consolas (System)";
             CLAY(CLAY_ID("SettingRowFont"), {
                 .layout = {
@@ -728,7 +812,7 @@ static void build_settings_modal(const ThUIState *ui, const ThConfigService *con
                     .childAlignment = { .y = CLAY_ALIGN_Y_BOTTOM }
                 }
             }) {
-                CLAY_TEXT(clay_str("Press Esc or Ctrl+, to close | L: Lines | F: Font | +/-: Size | T: Tab | C: Cursor | B: Blink"), {
+                CLAY_TEXT(clay_str("Press Esc or Ctrl+, to close | Ctrl+T: Theme | L: Lines | F: Font | +/-: Size | T: Tab | C: Cursor | B: Blink"), {
                     .fontSize = 12,
                     .textColor = { theme->text_gutter.r, theme->text_gutter.g, theme->text_gutter.b, 255 }
                 });
@@ -777,6 +861,9 @@ void th_ui_build_layout(
             build_goto_line_bar(ui, theme);
         }
 
+        /* 1.3 Scope Breadcrumbs Bar */
+        build_breadcrumbs_bar(editor, parser, theme);
+
         /* 2. Main Body (gutter + code + scrollbar) */
         CLAY(CLAY_ID("MainBody"), {
             .layout = {
@@ -785,7 +872,7 @@ void th_ui_build_layout(
             }
         }) {
             build_gutter(editor, config, theme);
-            build_code_canvas(editor, config, parser, renderer, theme);
+            build_code_canvas(ui, editor, config, parser, renderer, theme);
             build_scrollbar(editor, theme);
         }
 
