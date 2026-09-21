@@ -191,6 +191,40 @@ static void test_editor_find_replace(void) {
     printf("  [PASS] test_editor_find_replace\n");
 }
 
+static void test_editor_autopair_and_brackets(void) {
+    ThEditor ed;
+    th_editor_init(&ed);
+
+    /* 1. Typing '(' produces '()' with cursor inside */
+    th_editor_insert_char(&ed, '(');
+    assert(ed.cursor.col == 1);
+    size_t len = 0;
+    const char *line = th_editor_get_line(&ed, 0, &len);
+    assert(strcmp(line, "()") == 0);
+
+    /* 2. Skip-over ')' advances cursor */
+    th_editor_insert_char(&ed, ')');
+    assert(ed.cursor.col == 2);
+
+    /* 3. Empty pair backspace deletes both */
+    th_editor_insert_char(&ed, '{');
+    line = th_editor_get_line(&ed, 0, &len);
+    assert(strcmp(line, "(){}") == 0);
+    assert(ed.cursor.col == 3);
+    th_editor_backspace(&ed);
+    line = th_editor_get_line(&ed, 0, &len);
+    assert(strcmp(line, "()") == 0);
+
+    /* 4. Bracket matching */
+    ThPosition match;
+    bool found = th_editor_find_matching_bracket(&ed, (ThPosition){0, 0}, &match);
+    assert(found);
+    assert(match.line == 0 && match.col == 1);
+
+    th_editor_shutdown(&ed);
+    printf("  [PASS] test_editor_autopair_and_brackets\n");
+}
+
 int main(void) {
     printf("Running Editor Service Tests...\n");
     th_memory_init();
@@ -201,6 +235,7 @@ int main(void) {
     test_editor_undo_redo();
     test_editor_indent_dedent();
     test_editor_find_replace();
+    test_editor_autopair_and_brackets();
 
     ThMemoryStats stats = th_memory_get_stats();
     printf("Editor tests memory remaining: %zu bytes\n", stats.current_allocated_bytes);

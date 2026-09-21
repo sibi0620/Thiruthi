@@ -505,11 +505,155 @@ void th_editor_insert_text(ThEditor *editor, const char *text) {
 }
 
 void th_editor_insert_char(ThEditor *editor, char c) {
+    if (!editor) return;
+
+    /* Selection wrapping */
+    if (editor->has_selection) {
+        if (c == '(' || c == '[' || c == '{' || c == '"' || c == '\'') {
+            char close_char = ')';
+            if (c == '[') close_char = ']';
+            else if (c == '{') close_char = '}';
+            else if (c == '"') close_char = '"';
+            else if (c == '\'') close_char = '\'';
+
+            char *selected = th_editor_get_selected_text(editor);
+            if (selected) {
+                size_t sel_len = strlen(selected);
+                char *wrapped = (char *)th_malloc(sel_len + 3);
+                if (wrapped) {
+                    wrapped[0] = c;
+                    memcpy(wrapped + 1, selected, sel_len);
+                    wrapped[sel_len + 1] = close_char;
+                    wrapped[sel_len + 2] = '\0';
+
+                    th_editor_begin_transaction(editor);
+                    th_editor_delete_selection(editor);
+                    th_editor_insert_text(editor, wrapped);
+                    th_editor_end_transaction(editor);
+                    th_free(wrapped);
+                }
+                th_free(selected);
+                return;
+            }
+        }
+    }
+
+    ThLine *cur_line = (editor->cursor.line < editor->line_count) ? &editor->lines[editor->cursor.line] : NULL;
+    char next_char = (cur_line && editor->cursor.col < cur_line->length) ? cur_line->chars[editor->cursor.col] : '\0';
+    char prev_char = (cur_line && editor->cursor.col > 0) ? cur_line->chars[editor->cursor.col - 1] : '\0';
+
+    /* Skip-over closing characters if already present directly under cursor */
+    if ((c == ')' || c == ']' || c == '}' || c == '"' || c == '\'') && c == next_char) {
+        editor->cursor.col++;
+        editor->preferred_col = editor->cursor.col;
+        return;
+    }
+
+    /* Auto-pair opening characters */
+    if (c == '(') {
+        th_editor_insert_text(editor, "()");
+        editor->cursor.col--;
+        editor->preferred_col = editor->cursor.col;
+        return;
+    }
+    if (c == '[') {
+        th_editor_insert_text(editor, "[]");
+        editor->cursor.col--;
+        editor->preferred_col = editor->cursor.col;
+        return;
+    }
+    if (c == '{') {
+        th_editor_insert_text(editor, "{}");
+        editor->cursor.col--;
+        editor->preferred_col = editor->cursor.col;
+        return;
+    }
+    if (c == '"') {
+        if (!isalnum((unsigned char)prev_char)) {
+            th_editor_insert_text(editor, "\"\"");
+            editor->cursor.col--;
+            editor->preferred_col = editor->cursor.col;
+            return;
+        }
+    }
+    if (c == '\'') {
+        if (!isalnum((unsigned char)prev_char)) {
+            th_editor_insert_text(editor, "''");
+            editor->cursor.col--;
+            editor->preferred_col = editor->cursor.col;
+            return;
+        }
+    }
+
     char buf[2] = {c, '\0'};
     th_editor_insert_text(editor, buf);
 }
 
 void th_editor_insert_newline(ThEditor *editor) {
+    if (!editor) return;
+
+    if (editor->has_selection) {
+        th_editor_delete_selection(editor);
+    }
+
+    ThLine *cur_line = (editor->cursor.line < editor->line_count) ? &editor->lines[editor->cursor.line] : NULL;
+    char prev_char = (cur_line && editor->cursor.col > 0) ? cur_line->chars[editor->cursor.col - 1] : '\0';
+    char next_char = (cur_line && editor->cursor.col < cur_line->length) ? cur_line->chars[editor->cursor.col] : '\0';
+
+    /* Calculate current line leading whitespace */
+    size_t indent_len = 0;
+    if (cur_line) {
+        while (indent_len < cur_line->length && (cur_line->chars[indent_len] == ' ' || cur_line->chars[indent_len] == '\t')) {
+            indent_len++;
+        }
+    }
+
+    /* Smart expand between { and } */
+    if (prev_char == '{' && next_char == '}') {
+        th_editor_begin_transaction(editor);
+
+        char indent_buf[256];
+        if (indent_len >= sizeof(indent_buf) - 16) indent_len = sizeof(indent_buf) - 16;
+        if (indent_len > 0 && cur_line) {
+            memcpy(indent_buf, cur_line->chars, indent_len);
+        }
+        indent_buf[indent_len] = '\0';
+
+        char expand_buf[1024];
+        snprintf(expand_buf, sizeof(expand_buf), "\n%s    \n%s", indent_buf, indent_buf);
+        th_editor_insert_text(editor, expand_buf);
+
+        /* Move cursor to the middle indented line */
+        editor->cursor.line--;
+        editor->cursor.col = (uint32_t)(indent_len + 4);
+        editor->preferred_col = editor->cursor.col;
+
+        th_editor_end_transaction(editor);
+        return;
+    }
+
+    /* Normal newline with auto-indent preservation */
+    if (indent_len > 0 || prev_char == '{') {
+        char nl_buf[256];
+        size_t cap = sizeof(nl_buf) - 8;
+        if (indent_len > cap) indent_len = cap;
+
+        nl_buf[0] = '\n';
+        if (indent_len > 0 && cur_line) {
+            memcpy(nl_buf + 1, cur_line->chars, indent_len);
+        }
+        size_t total = 1 + indent_len;
+
+        if (prev_char == '{') {
+            memcpy(nl_buf + total, "    ", 4);
+            total += 4;
+        }
+        nl_buf[total] = '\0';
+
+        th_editor_insert_text(editor, nl_buf);
+        return;
+    }
+
     th_editor_insert_text(editor, "\n");
 }
 
@@ -519,6 +663,33 @@ void th_editor_backspace(ThEditor *editor) {
     if (editor->has_selection) {
         th_editor_delete_selection(editor);
         return;
+    }
+
+    ThLine *cur_line = (editor->cursor.line < editor->line_count) ? &editor->lines[editor->cursor.line] : NULL;
+
+    /* Smart pair deletion when cursor is directly between an empty pair */
+    if (cur_line && editor->cursor.col > 0 && editor->cursor.col < cur_line->length) {
+        char prev = cur_line->chars[editor->cursor.col - 1];
+        char next = cur_line->chars[editor->cursor.col];
+        if ((prev == '(' && next == ')') ||
+            (prev == '[' && next == ']') ||
+            (prev == '{' && next == '}') ||
+            (prev == '"' && next == '"') ||
+            (prev == '\'' && next == '\'')) {
+            ThRange range = {
+                .start = {editor->cursor.line, editor->cursor.col - 1},
+                .end = {editor->cursor.line, editor->cursor.col + 1}
+            };
+            uint32_t group_id = get_action_group(editor);
+            char *deleted = raw_delete_range(editor, range);
+            if (deleted) {
+                undo_stack_push(&editor->undo_stack, TH_UNDO_DELETE, range.start, deleted, group_id);
+                undo_stack_clear(&editor->redo_stack);
+                th_free(deleted);
+            }
+            th_editor_clamp_cursor(editor);
+            return;
+        }
     }
 
     if (editor->cursor.col > 0) {
@@ -709,7 +880,11 @@ bool th_editor_redo(ThEditor *editor) {
         undo_stack_pop(&editor->redo_stack, &rec);
 
         if (rec.type == TH_UNDO_DELETE) {
-            /* Redo delete */
+            /* Undo stored the inverse of an insertion; redo restores it. */
+            raw_insert_text_at(editor, rec.pos, rec.text);
+            undo_stack_push(&editor->undo_stack, TH_UNDO_INSERT, rec.pos, rec.text, target_group);
+        } else if (rec.type == TH_UNDO_INSERT) {
+            /* Undo stored the inverse of a deletion; redo restores the deletion. */
             size_t text_len = strlen(rec.text);
             uint32_t end_line = rec.pos.line;
             uint32_t end_col = rec.pos.col;
@@ -724,12 +899,7 @@ bool th_editor_redo(ThEditor *editor) {
             ThRange range = {rec.pos, {end_line, end_col}};
             char *del = raw_delete_range(editor, range);
             if (del) th_free(del);
-
             undo_stack_push(&editor->undo_stack, TH_UNDO_DELETE, rec.pos, rec.text, target_group);
-        } else if (rec.type == TH_UNDO_INSERT) {
-            /* Redo insert */
-            raw_insert_text_at(editor, rec.pos, rec.text);
-            undo_stack_push(&editor->undo_stack, TH_UNDO_INSERT, rec.pos, rec.text, target_group);
         }
 
         if (rec.text) th_free(rec.text);
@@ -1097,4 +1267,102 @@ size_t th_editor_replace_all(ThEditor *editor, const char *pattern, const char *
 
     th_editor_end_transaction(editor);
     return count;
+}
+
+bool th_editor_get_word_prefix(const ThEditor *editor, char *out_prefix, size_t max_len, uint32_t *out_start_col) {
+    if (!editor || !out_prefix || max_len == 0) return false;
+    out_prefix[0] = '\0';
+    if (out_start_col) *out_start_col = editor->cursor.col;
+
+    if (editor->cursor.line >= editor->line_count) return false;
+    const ThLine *line = &editor->lines[editor->cursor.line];
+    if (editor->cursor.col > line->length) return false;
+
+    uint32_t col = editor->cursor.col;
+    uint32_t start = col;
+    while (start > 0 && (isalnum((unsigned char)line->chars[start - 1]) || line->chars[start - 1] == '_')) {
+        start--;
+    }
+
+    if (start == col) return false;
+    size_t len = col - start;
+    if (len >= max_len) len = max_len - 1;
+    memcpy(out_prefix, line->chars + start, len);
+    out_prefix[len] = '\0';
+
+    if (out_start_col) *out_start_col = start;
+    return true;
+}
+
+void th_editor_apply_completion(ThEditor *editor, uint32_t start_col, const char *insert_text) {
+    if (!editor || !insert_text) return;
+    if (editor->cursor.line >= editor->line_count) return;
+
+    th_editor_begin_transaction(editor);
+
+    /* Delete from start_col to cursor.col */
+    if (editor->cursor.col > start_col) {
+        ThRange range = {
+            .start = {editor->cursor.line, start_col},
+            .end = editor->cursor
+        };
+        uint32_t group_id = get_action_group(editor);
+        char *del = raw_delete_range(editor, range);
+        if (del) {
+            undo_stack_push(&editor->undo_stack, TH_UNDO_DELETE, range.start, del, group_id);
+            undo_stack_clear(&editor->redo_stack);
+            th_free(del);
+        }
+        editor->cursor.col = start_col;
+    }
+
+    th_editor_insert_text(editor, insert_text);
+    th_editor_end_transaction(editor);
+}
+
+bool th_editor_find_matching_bracket(const ThEditor *editor, ThPosition pos, ThPosition *out_match) {
+    if (!editor || !out_match) return false;
+    if (pos.line >= editor->line_count) return false;
+
+    const ThLine *line = &editor->lines[pos.line];
+    if (pos.col >= line->length) return false;
+
+    char c = line->chars[pos.col];
+    char target = '\0';
+    int dir = 0;
+
+    if (c == '(') { target = ')'; dir = 1; }
+    else if (c == ')') { target = '('; dir = -1; }
+    else if (c == '[') { target = ']'; dir = 1; }
+    else if (c == ']') { target = '['; dir = -1; }
+    else if (c == '{') { target = '}'; dir = 1; }
+    else if (c == '}') { target = '{'; dir = -1; }
+    else return false;
+
+    int depth = 1;
+    int cur_line = (int)pos.line;
+    int cur_col = (int)pos.col + dir;
+
+    while (cur_line >= 0 && cur_line < (int)editor->line_count) {
+        const ThLine *l = &editor->lines[cur_line];
+        while (cur_col >= 0 && cur_col < (int)l->length) {
+            char ch = l->chars[cur_col];
+            if (ch == c) depth++;
+            else if (ch == target) {
+                depth--;
+                if (depth == 0) {
+                    out_match->line = (uint32_t)cur_line;
+                    out_match->col = (uint32_t)cur_col;
+                    return true;
+                }
+            }
+            cur_col += dir;
+        }
+        cur_line += dir;
+        if (cur_line >= 0 && cur_line < (int)editor->line_count) {
+            cur_col = (dir > 0) ? 0 : (int)editor->lines[cur_line].length - 1;
+        }
+    }
+
+    return false;
 }

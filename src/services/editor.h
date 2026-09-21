@@ -109,6 +109,13 @@ char *th_editor_get_selected_text(const ThEditor *editor);
 /* Clamping & Utilities */
 void th_editor_clamp_cursor(ThEditor *editor);
 
+/* Word Prefix & Completion */
+bool th_editor_get_word_prefix(const ThEditor *editor, char *out_prefix, size_t max_len, uint32_t *out_start_col);
+void th_editor_apply_completion(ThEditor *editor, uint32_t start_col, const char *insert_text);
+
+/* Bracket Matching */
+bool th_editor_find_matching_bracket(const ThEditor *editor, ThPosition pos, ThPosition *out_match);
+
 /* Search & Replace */
 bool th_editor_find_next(ThEditor *editor, const char *pattern, bool case_sensitive);
 bool th_editor_replace_current(ThEditor *editor, const char *pattern, const char *replacement, bool case_sensitive);
