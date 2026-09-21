@@ -96,8 +96,8 @@ static void build_header(const ThUIState *ui, const ThEditor *editor, const ThTh
     (void)ui;
     CLAY(CLAY_ID("Header"), {
         .layout = {
-            .sizing = { .width = CLAY_SIZING_GROW(0), .height = CLAY_SIZING_FIXED(38) },
-            .padding = CLAY_PADDING_ALL(8),
+            .sizing = { .width = CLAY_SIZING_GROW(0), .height = CLAY_SIZING_FIXED(42) },
+            .padding = { .left = 12, .right = 12, .top = 6, .bottom = 6 },
             .childGap = 12,
             .layoutDirection = CLAY_LEFT_TO_RIGHT,
             .childAlignment = { .y = CLAY_ALIGN_Y_CENTER }
@@ -109,7 +109,7 @@ static void build_header(const ThUIState *ui, const ThEditor *editor, const ThTh
         const char *fname = editor->filepath[0] ? editor->filepath : "Untitled";
         Clay_String title_str = ui_dyn_str("  %s%s", fname, dirty);
         CLAY_TEXT(title_str, {
-            .fontSize = 14,
+            .fontSize = 15,
             .textColor = { theme->text_normal.r, theme->text_normal.g, theme->text_normal.b, 255 }
         });
 
@@ -121,85 +121,85 @@ static void build_header(const ThUIState *ui, const ThEditor *editor, const ThTh
         /* Action Buttons */
         CLAY(CLAY_ID("BtnSave"), {
             .layout = {
-                .sizing = { .width = CLAY_SIZING_FIXED(65), .height = CLAY_SIZING_FIXED(26) },
-                .padding = { .left = 6, .right = 6 },
+                .sizing = { .width = CLAY_SIZING_FIXED(74), .height = CLAY_SIZING_FIXED(30) },
+                .padding = { .left = 8, .right = 8 },
                 .childAlignment = { .x = CLAY_ALIGN_X_CENTER, .y = CLAY_ALIGN_Y_CENTER }
             },
             .backgroundColor = { theme->bg_main.r, theme->bg_main.g, theme->bg_main.b, 255 },
-            .cornerRadius = CLAY_CORNER_RADIUS(4)
+            .cornerRadius = CLAY_CORNER_RADIUS(5)
         }) {
             CLAY_TEXT(clay_str("Save"), {
-                .fontSize = 12,
-                .textColor = { theme->text_normal.r, theme->text_normal.g, theme->text_normal.b, 255 }
+                .fontSize = 14,
+                .textColor = { 225, 225, 235, 255 }
             });
         }
 
         CLAY(CLAY_ID("BtnFormat"), {
             .layout = {
-                .sizing = { .width = CLAY_SIZING_FIXED(75), .height = CLAY_SIZING_FIXED(26) },
-                .padding = { .left = 6, .right = 6 },
+                .sizing = { .width = CLAY_SIZING_FIXED(84), .height = CLAY_SIZING_FIXED(30) },
+                .padding = { .left = 8, .right = 8 },
                 .childAlignment = { .x = CLAY_ALIGN_X_CENTER, .y = CLAY_ALIGN_Y_CENTER }
             },
             .backgroundColor = { theme->bg_main.r, theme->bg_main.g, theme->bg_main.b, 255 },
-            .cornerRadius = CLAY_CORNER_RADIUS(4)
+            .cornerRadius = CLAY_CORNER_RADIUS(5)
         }) {
             CLAY_TEXT(clay_str("Format"), {
-                .fontSize = 12,
-                .textColor = { theme->text_normal.r, theme->text_normal.g, theme->text_normal.b, 255 }
+                .fontSize = 14,
+                .textColor = { 225, 225, 235, 255 }
             });
         }
 
         CLAY(CLAY_ID("BtnLint"), {
             .layout = {
-                .sizing = { .width = CLAY_SIZING_FIXED(65), .height = CLAY_SIZING_FIXED(26) },
-                .padding = { .left = 6, .right = 6 },
+                .sizing = { .width = CLAY_SIZING_FIXED(74), .height = CLAY_SIZING_FIXED(30) },
+                .padding = { .left = 8, .right = 8 },
                 .childAlignment = { .x = CLAY_ALIGN_X_CENTER, .y = CLAY_ALIGN_Y_CENTER }
             },
             .backgroundColor = { theme->bg_main.r, theme->bg_main.g, theme->bg_main.b, 255 },
-            .cornerRadius = CLAY_CORNER_RADIUS(4)
+            .cornerRadius = CLAY_CORNER_RADIUS(5)
         }) {
             CLAY_TEXT(clay_str("Lint"), {
-                .fontSize = 12,
-                .textColor = { theme->text_normal.r, theme->text_normal.g, theme->text_normal.b, 255 }
+                .fontSize = 14,
+                .textColor = { 225, 225, 235, 255 }
             });
         }
 
         CLAY(CLAY_ID("BtnProblems"), {
             .layout = {
-                .sizing = { .width = CLAY_SIZING_FIXED(90), .height = CLAY_SIZING_FIXED(26) },
-                .padding = { .left = 6, .right = 6 },
+                .sizing = { .width = CLAY_SIZING_FIXED(100), .height = CLAY_SIZING_FIXED(30) },
+                .padding = { .left = 8, .right = 8 },
                 .childAlignment = { .x = CLAY_ALIGN_X_CENTER, .y = CLAY_ALIGN_Y_CENTER }
             },
             .backgroundColor = ui->problems_panel_open
                 ? (Clay_Color){ theme->accent.r, theme->accent.g, theme->accent.b, 255 }
                 : (Clay_Color){ theme->bg_main.r, theme->bg_main.g, theme->bg_main.b, 255 },
-            .cornerRadius = CLAY_CORNER_RADIUS(4)
+            .cornerRadius = CLAY_CORNER_RADIUS(5)
         }) {
             CLAY_TEXT(clay_str("Problems"), {
-                .fontSize = 12,
+                .fontSize = 14,
                 .textColor = ui->problems_panel_open
-                    ? (Clay_Color){ 30, 30, 46, 255 }
-                    : (Clay_Color){ theme->text_normal.r, theme->text_normal.g, theme->text_normal.b, 255 }
+                    ? (Clay_Color){ 20, 20, 28, 255 }
+                    : (Clay_Color){ 225, 225, 235, 255 }
             });
         }
 
         /* Settings Button */
         CLAY(CLAY_ID("SettingsButton"), {
             .layout = {
-                .sizing = { .width = CLAY_SIZING_FIXED(95), .height = CLAY_SIZING_FIXED(26) },
-                .padding = { .left = 6, .right = 6 },
+                .sizing = { .width = CLAY_SIZING_FIXED(100), .height = CLAY_SIZING_FIXED(30) },
+                .padding = { .left = 8, .right = 8 },
                 .childAlignment = { .x = CLAY_ALIGN_X_CENTER, .y = CLAY_ALIGN_Y_CENTER }
             },
             .backgroundColor = ui->settings_open
                 ? (Clay_Color){ theme->accent.r, theme->accent.g, theme->accent.b, 255 }
                 : (Clay_Color){ theme->bg_main.r, theme->bg_main.g, theme->bg_main.b, 255 },
-            .cornerRadius = CLAY_CORNER_RADIUS(4)
+            .cornerRadius = CLAY_CORNER_RADIUS(5)
         }) {
             CLAY_TEXT(clay_str("Settings"), {
-                .fontSize = 12,
+                .fontSize = 14,
                 .textColor = ui->settings_open
-                    ? (Clay_Color){ 30, 30, 46, 255 }
-                    : (Clay_Color){ theme->text_normal.r, theme->text_normal.g, theme->text_normal.b, 255 }
+                    ? (Clay_Color){ 20, 20, 28, 255 }
+                    : (Clay_Color){ 225, 225, 235, 255 }
             });
         }
     }
@@ -212,19 +212,19 @@ static void build_header(const ThUIState *ui, const ThEditor *editor, const ThTh
 static void build_status_bar(const ThUIState *ui, const ThEditor *editor, const ThConfigService *config, const ThTheme *theme) {
     CLAY(CLAY_ID("StatusBar"), {
         .layout = {
-            .sizing = { .width = CLAY_SIZING_GROW(0), .height = CLAY_SIZING_FIXED(26) },
-            .padding = CLAY_PADDING_ALL(4),
-            .childGap = 16,
+            .sizing = { .width = CLAY_SIZING_GROW(0), .height = CLAY_SIZING_FIXED(32) },
+            .padding = { .left = 16, .right = 16, .top = 4, .bottom = 4 },
+            .childGap = 20,
             .childAlignment = { .y = CLAY_ALIGN_Y_CENTER },
             .layoutDirection = CLAY_LEFT_TO_RIGHT
         },
-        .backgroundColor = { theme->accent.r, theme->accent.g, theme->accent.b, 220 }
+        .backgroundColor = { theme->accent.r, theme->accent.g, theme->accent.b, 255 }
     }) {
         /* Cursor position */
         Clay_String pos_str = ui_dyn_str("Ln %u, Col %u", editor->cursor.line + 1, editor->cursor.col + 1);
         CLAY_TEXT(pos_str, {
-            .fontSize = 12,
-            .textColor = { 30, 30, 46, 255 }
+            .fontSize = 14,
+            .textColor = { 20, 20, 28, 255 }
         });
 
         /* Line numbers mode indicator */
@@ -233,24 +233,24 @@ static void build_status_bar(const ThUIState *ui, const ThEditor *editor, const 
         else if (config->editor.line_number_mode == TH_LINE_NUMBERS_NONE) lmode = "No Line Numbers";
         Clay_String mode_str = ui_dyn_str("[%s]", lmode);
         CLAY_TEXT(mode_str, {
-            .fontSize = 11,
-            .textColor = { 30, 30, 46, 200 }
+            .fontSize = 13,
+            .textColor = { 45, 45, 58, 235 }
         });
 
         /* Status message */
         if (ui->status_message[0]) {
             Clay_String msg_str = ui_dyn_str("%s", ui->status_message);
             CLAY_TEXT(msg_str, {
-                .fontSize = 12,
-                .textColor = { 30, 30, 46, 255 }
+                .fontSize = 14,
+                .textColor = { 20, 20, 28, 255 }
             });
         }
 
         /* Line count */
         Clay_String lines_str = ui_dyn_str("%zu lines", editor->line_count);
         CLAY_TEXT(lines_str, {
-            .fontSize = 12,
-            .textColor = { 30, 30, 46, 200 }
+            .fontSize = 13,
+            .textColor = { 45, 45, 58, 235 }
         });
     }
 }
@@ -331,7 +331,7 @@ static void build_breadcrumbs_bar(
 
     CLAY(CLAY_ID("BreadcrumbsBar"), {
         .layout = {
-            .sizing = { .width = CLAY_SIZING_GROW(0), .height = CLAY_SIZING_FIXED(24) },
+            .sizing = { .width = CLAY_SIZING_GROW(0), .height = CLAY_SIZING_FIXED(28) },
             .padding = { .left = 14, .right = 14 },
             .layoutDirection = CLAY_LEFT_TO_RIGHT,
             .childAlignment = { .y = CLAY_ALIGN_Y_CENTER },
@@ -341,19 +341,19 @@ static void build_breadcrumbs_bar(
     }) {
         Clay_String file_item = ui_dyn_str("📁 %s", base_name);
         CLAY_TEXT(file_item, {
-            .fontSize = 11,
+            .fontSize = 13,
             .textColor = { theme->text_gutter.r, theme->text_gutter.g, theme->text_gutter.b, 255 }
         });
 
         if (has_scope && scope_buf[0]) {
             CLAY_TEXT(clay_str("›"), {
-                .fontSize = 11,
+                .fontSize = 13,
                 .textColor = { theme->text_gutter.r, theme->text_gutter.g, theme->text_gutter.b, 180 }
             });
 
             Clay_String scope_item = ui_dyn_str("⚡ %s", scope_buf);
             CLAY_TEXT(scope_item, {
-                .fontSize = 11,
+                .fontSize = 13,
                 .textColor = { theme->accent.r, theme->accent.g, theme->accent.b, 255 }
             });
         }
@@ -443,7 +443,7 @@ static void build_problems_panel(const ThUIState *ui, const ThTheme *theme) {
 static void build_find_replace_bar(const ThUIState *ui, const ThTheme *theme) {
     CLAY(CLAY_ID("FindReplaceBar"), {
         .layout = {
-            .sizing = { .width = CLAY_SIZING_GROW(0), .height = CLAY_SIZING_FIXED(36) },
+            .sizing = { .width = CLAY_SIZING_GROW(0), .height = CLAY_SIZING_FIXED(40) },
             .padding = { .left = 16, .right = 16 },
             .childGap = 16,
             .layoutDirection = CLAY_LEFT_TO_RIGHT,
@@ -457,16 +457,17 @@ static void build_find_replace_bar(const ThUIState *ui, const ThTheme *theme) {
                  ui->find_replace.active_field == 0 ? "_" : "");
         CLAY(CLAY_ID("FindField"), {
             .layout = {
-                .sizing = { .width = CLAY_SIZING_FIXED(220), .height = CLAY_SIZING_FIXED(26) },
-                .padding = { .left = 8, .right = 8 },
+                .sizing = { .width = CLAY_SIZING_FIXED(240), .height = CLAY_SIZING_FIXED(30) },
+                .padding = { .left = 10, .right = 10 },
                 .childAlignment = { .y = CLAY_ALIGN_Y_CENTER }
             },
             .backgroundColor = ui->find_replace.active_field == 0
                 ? (Clay_Color){ theme->bg_selection.r, theme->bg_selection.g, theme->bg_selection.b, 255 }
-                : (Clay_Color){ theme->bg_main.r, theme->bg_main.g, theme->bg_main.b, 255 }
+                : (Clay_Color){ theme->bg_main.r, theme->bg_main.g, theme->bg_main.b, 255 },
+            .cornerRadius = CLAY_CORNER_RADIUS(4)
         }) {
             CLAY_TEXT(clay_str(find_display), {
-                .fontSize = 12,
+                .fontSize = 13,
                 .textColor = { theme->text_normal.r, theme->text_normal.g, theme->text_normal.b, 255 }
             });
         }
@@ -478,16 +479,17 @@ static void build_find_replace_bar(const ThUIState *ui, const ThTheme *theme) {
                      ui->find_replace.active_field == 1 ? "_" : "");
             CLAY(CLAY_ID("ReplaceField"), {
                 .layout = {
-                    .sizing = { .width = CLAY_SIZING_FIXED(220), .height = CLAY_SIZING_FIXED(26) },
-                    .padding = { .left = 8, .right = 8 },
+                    .sizing = { .width = CLAY_SIZING_FIXED(240), .height = CLAY_SIZING_FIXED(30) },
+                    .padding = { .left = 10, .right = 10 },
                     .childAlignment = { .y = CLAY_ALIGN_Y_CENTER }
                 },
                 .backgroundColor = ui->find_replace.active_field == 1
                     ? (Clay_Color){ theme->bg_selection.r, theme->bg_selection.g, theme->bg_selection.b, 255 }
-                    : (Clay_Color){ theme->bg_main.r, theme->bg_main.g, theme->bg_main.b, 255 }
+                    : (Clay_Color){ theme->bg_main.r, theme->bg_main.g, theme->bg_main.b, 255 },
+                .cornerRadius = CLAY_CORNER_RADIUS(4)
             }) {
                 CLAY_TEXT(clay_str(repl_display), {
-                    .fontSize = 12,
+                    .fontSize = 13,
                     .textColor = { theme->text_normal.r, theme->text_normal.g, theme->text_normal.b, 255 }
                 });
             }
@@ -497,7 +499,7 @@ static void build_find_replace_bar(const ThUIState *ui, const ThTheme *theme) {
             ? "Enter: Replace & Next | Tab: Switch field | Esc: Close"
             : "Enter: Next | Shift+Enter: Prev | Esc: Close";
         CLAY_TEXT(clay_str(hint), {
-            .fontSize = 11,
+            .fontSize = 12,
             .textColor = { theme->text_gutter.r, theme->text_gutter.g, theme->text_gutter.b, 255 }
         });
     }
@@ -506,7 +508,7 @@ static void build_find_replace_bar(const ThUIState *ui, const ThTheme *theme) {
 static void build_goto_line_bar(const ThUIState *ui, const ThTheme *theme) {
     CLAY(CLAY_ID("GotoLineBar"), {
         .layout = {
-            .sizing = { .width = CLAY_SIZING_GROW(0), .height = CLAY_SIZING_FIXED(36) },
+            .sizing = { .width = CLAY_SIZING_GROW(0), .height = CLAY_SIZING_FIXED(40) },
             .padding = { .left = 16, .right = 16 },
             .childGap = 16,
             .layoutDirection = CLAY_LEFT_TO_RIGHT,
@@ -518,20 +520,21 @@ static void build_goto_line_bar(const ThUIState *ui, const ThTheme *theme) {
         snprintf(goto_buf, sizeof(goto_buf), "Go to Line: %s_", ui->goto_line.line_input);
         CLAY(CLAY_ID("GotoField"), {
             .layout = {
-                .sizing = { .width = CLAY_SIZING_FIXED(160), .height = CLAY_SIZING_FIXED(26) },
-                .padding = { .left = 8, .right = 8 },
+                .sizing = { .width = CLAY_SIZING_FIXED(180), .height = CLAY_SIZING_FIXED(30) },
+                .padding = { .left = 10, .right = 10 },
                 .childAlignment = { .y = CLAY_ALIGN_Y_CENTER }
             },
-            .backgroundColor = { theme->bg_selection.r, theme->bg_selection.g, theme->bg_selection.b, 255 }
+            .backgroundColor = { theme->bg_selection.r, theme->bg_selection.g, theme->bg_selection.b, 255 },
+            .cornerRadius = CLAY_CORNER_RADIUS(4)
         }) {
             CLAY_TEXT(clay_str(goto_buf), {
-                .fontSize = 12,
+                .fontSize = 13,
                 .textColor = { theme->text_normal.r, theme->text_normal.g, theme->text_normal.b, 255 }
             });
         }
 
         CLAY_TEXT(clay_str("Press Enter to jump, Esc to cancel"), {
-            .fontSize = 11,
+            .fontSize = 12,
             .textColor = { theme->text_gutter.r, theme->text_gutter.g, theme->text_gutter.b, 255 }
         });
     }
@@ -598,24 +601,24 @@ static void build_settings_modal(const ThUIState *ui, const ThConfigService *con
         /* Modal Window Box */
         CLAY(CLAY_ID("SettingsDialog"), {
             .layout = {
-                .sizing = { .width = CLAY_SIZING_FIXED(620), .height = CLAY_SIZING_FIXED(480) },
+                .sizing = { .width = CLAY_SIZING_FIXED(720), .height = CLAY_SIZING_FIXED(560) },
                 .padding = CLAY_PADDING_ALL(24),
                 .layoutDirection = CLAY_TOP_TO_BOTTOM,
-                .childGap = 12
+                .childGap = 10
             },
             .backgroundColor = { theme->bg_surface.r, theme->bg_surface.g, theme->bg_surface.b, 255 },
-            .cornerRadius = CLAY_CORNER_RADIUS(8)
+            .cornerRadius = CLAY_CORNER_RADIUS(10)
         }) {
             /* Title */
             CLAY(CLAY_ID("SettingsTitleRow"), {
                 .layout = {
-                    .sizing = { .width = CLAY_SIZING_GROW(0), .height = CLAY_SIZING_FIXED(32) },
+                    .sizing = { .width = CLAY_SIZING_GROW(0), .height = CLAY_SIZING_FIXED(36) },
                     .layoutDirection = CLAY_LEFT_TO_RIGHT,
                     .childAlignment = { .y = CLAY_ALIGN_Y_CENTER }
                 }
             }) {
                 CLAY_TEXT(clay_str("⚙ Settings"), {
-                    .fontSize = 20,
+                    .fontSize = 24,
                     .textColor = { theme->accent.r, theme->accent.g, theme->accent.b, 255 }
                 });
             }
@@ -630,23 +633,23 @@ static void build_settings_modal(const ThUIState *ui, const ThConfigService *con
 
             CLAY(CLAY_ID("SettingRowLines"), {
                 .layout = {
-                    .sizing = { .width = CLAY_SIZING_GROW(0), .height = CLAY_SIZING_FIXED(38) },
-                    .padding = { .left = 12, .right = 12 },
+                    .sizing = { .width = CLAY_SIZING_GROW(0), .height = CLAY_SIZING_FIXED(46) },
+                    .padding = { .left = 16, .right = 16 },
                     .layoutDirection = CLAY_LEFT_TO_RIGHT,
                     .childAlignment = { .y = CLAY_ALIGN_Y_CENTER },
                     .childGap = 16
                 },
                 .backgroundColor = { theme->bg_main.r, theme->bg_main.g, theme->bg_main.b, 255 },
-                .cornerRadius = CLAY_CORNER_RADIUS(4)
+                .cornerRadius = CLAY_CORNER_RADIUS(6)
             }) {
                 CLAY_TEXT(clay_str("Line Numbers:"), {
-                    .fontSize = 14,
-                    .textColor = { theme->text_normal.r, theme->text_normal.g, theme->text_normal.b, 255 }
+                    .fontSize = 15,
+                    .textColor = { 240, 240, 245, 255 }
                 });
 
                 Clay_String val = ui_dyn_str("[ %s ]  (Press 'L' to cycle: Static / Relative / None)", mode_str);
                 CLAY_TEXT(val, {
-                    .fontSize = 13,
+                    .fontSize = 14,
                     .textColor = { theme->accent.r, theme->accent.g, theme->accent.b, 255 }
                 });
             }
@@ -654,102 +657,113 @@ static void build_settings_modal(const ThUIState *ui, const ThConfigService *con
             /* Option 2: Theme */
             CLAY(CLAY_ID("SettingRowTheme"), {
                 .layout = {
-                    .sizing = { .width = CLAY_SIZING_GROW(0), .height = CLAY_SIZING_FIXED(38) },
-                    .padding = { .left = 12, .right = 12 },
+                    .sizing = { .width = CLAY_SIZING_GROW(0), .height = CLAY_SIZING_FIXED(46) },
+                    .padding = { .left = 16, .right = 16 },
                     .layoutDirection = CLAY_LEFT_TO_RIGHT,
                     .childAlignment = { .y = CLAY_ALIGN_Y_CENTER },
                     .childGap = 16
                 },
                 .backgroundColor = { theme->bg_main.r, theme->bg_main.g, theme->bg_main.b, 255 },
-                .cornerRadius = CLAY_CORNER_RADIUS(4)
+                .cornerRadius = CLAY_CORNER_RADIUS(6)
             }) {
                 CLAY_TEXT(clay_str("Theme:"), {
-                    .fontSize = 14,
-                    .textColor = { theme->text_normal.r, theme->text_normal.g, theme->text_normal.b, 255 }
+                    .fontSize = 15,
+                    .textColor = { 240, 240, 245, 255 }
                 });
 
                 Clay_String theme_value = ui_dyn_str("[ %s ]  (Press Ctrl+T to cycle)",
                                                      th_config_get_theme_name(config->editor.theme_id));
                 CLAY_TEXT(theme_value, {
-                    .fontSize = 13,
+                    .fontSize = 14,
                     .textColor = { theme->accent.r, theme->accent.g, theme->accent.b, 255 }
                 });
             }
 
             /* Option 3: Font Selection */
-            const char *font_display = config->editor.font_path[0] ? config->editor.font_path : "Consolas (System)";
+            const char *font_display = "Default";
+            if (strstr(config->editor.font_path, "iosevka")) font_display = "Iosevka (TTF)";
+            else if (strstr(config->editor.font_path, "JetBrains")) font_display = "JetBrains Mono (TTF)";
+            else if (strstr(config->editor.font_path, "Cascadia")) font_display = "Cascadia Mono";
+            else if (strstr(config->editor.font_path, "consola")) font_display = "Consolas";
+            else if (strstr(config->editor.font_path, "cour")) font_display = "Courier New";
+            else if (config->editor.font_path[0]) {
+                const char *s = strrchr(config->editor.font_path, '\\');
+                if (!s) s = strrchr(config->editor.font_path, '/');
+                font_display = s ? (s + 1) : config->editor.font_path;
+            }
+
             CLAY(CLAY_ID("SettingRowFont"), {
                 .layout = {
-                    .sizing = { .width = CLAY_SIZING_GROW(0), .height = CLAY_SIZING_FIXED(38) },
-                    .padding = { .left = 12, .right = 12 },
+                    .sizing = { .width = CLAY_SIZING_GROW(0), .height = CLAY_SIZING_FIXED(46) },
+                    .padding = { .left = 16, .right = 16 },
                     .layoutDirection = CLAY_LEFT_TO_RIGHT,
                     .childAlignment = { .y = CLAY_ALIGN_Y_CENTER },
                     .childGap = 16
                 },
                 .backgroundColor = { theme->bg_main.r, theme->bg_main.g, theme->bg_main.b, 255 },
-                .cornerRadius = CLAY_CORNER_RADIUS(4)
+                .cornerRadius = CLAY_CORNER_RADIUS(6)
             }) {
                 CLAY_TEXT(clay_str("Editor Font:"), {
-                    .fontSize = 14,
-                    .textColor = { theme->text_normal.r, theme->text_normal.g, theme->text_normal.b, 255 }
+                    .fontSize = 15,
+                    .textColor = { 240, 240, 245, 255 }
                 });
 
                 Clay_String fval = ui_dyn_str("[ %s ]  (Press 'F' to cycle fonts)", font_display);
                 CLAY_TEXT(fval, {
-                    .fontSize = 13,
+                    .fontSize = 14,
                     .textColor = { theme->accent.r, theme->accent.g, theme->accent.b, 255 }
                 });
             }
 
-            /* Option 3: Font Size */
+            /* Option 4: Font Size */
             CLAY(CLAY_ID("SettingRowSize"), {
                 .layout = {
-                    .sizing = { .width = CLAY_SIZING_GROW(0), .height = CLAY_SIZING_FIXED(38) },
-                    .padding = { .left = 12, .right = 12 },
+                    .sizing = { .width = CLAY_SIZING_GROW(0), .height = CLAY_SIZING_FIXED(46) },
+                    .padding = { .left = 16, .right = 16 },
                     .layoutDirection = CLAY_LEFT_TO_RIGHT,
                     .childAlignment = { .y = CLAY_ALIGN_Y_CENTER },
                     .childGap = 16
                 },
                 .backgroundColor = { theme->bg_main.r, theme->bg_main.g, theme->bg_main.b, 255 },
-                .cornerRadius = CLAY_CORNER_RADIUS(4)
+                .cornerRadius = CLAY_CORNER_RADIUS(6)
             }) {
                 CLAY_TEXT(clay_str("Font Size:"), {
-                    .fontSize = 14,
-                    .textColor = { theme->text_normal.r, theme->text_normal.g, theme->text_normal.b, 255 }
+                    .fontSize = 15,
+                    .textColor = { 240, 240, 245, 255 }
                 });
 
                 Clay_String sval = ui_dyn_str("[ %d px ]  (Press '+' or '-' to adjust)", config->editor.font_size);
                 CLAY_TEXT(sval, {
-                    .fontSize = 13,
+                    .fontSize = 14,
                     .textColor = { theme->accent.r, theme->accent.g, theme->accent.b, 255 }
                 });
             }
 
-            /* Option 4: Tab Size */
+            /* Option 5: Tab Size */
             CLAY(CLAY_ID("SettingRowTab"), {
                 .layout = {
-                    .sizing = { .width = CLAY_SIZING_GROW(0), .height = CLAY_SIZING_FIXED(38) },
-                    .padding = { .left = 12, .right = 12 },
+                    .sizing = { .width = CLAY_SIZING_GROW(0), .height = CLAY_SIZING_FIXED(46) },
+                    .padding = { .left = 16, .right = 16 },
                     .layoutDirection = CLAY_LEFT_TO_RIGHT,
                     .childAlignment = { .y = CLAY_ALIGN_Y_CENTER },
                     .childGap = 16
                 },
                 .backgroundColor = { theme->bg_main.r, theme->bg_main.g, theme->bg_main.b, 255 },
-                .cornerRadius = CLAY_CORNER_RADIUS(4)
+                .cornerRadius = CLAY_CORNER_RADIUS(6)
             }) {
                 CLAY_TEXT(clay_str("Tab Size:"), {
-                    .fontSize = 14,
-                    .textColor = { theme->text_normal.r, theme->text_normal.g, theme->text_normal.b, 255 }
+                    .fontSize = 15,
+                    .textColor = { 240, 240, 245, 255 }
                 });
 
                 Clay_String tval = ui_dyn_str("[ %d spaces ]  (Press 'T' to cycle: 2, 4, 8)", config->editor.tab_size);
                 CLAY_TEXT(tval, {
-                    .fontSize = 13,
+                    .fontSize = 14,
                     .textColor = { theme->accent.r, theme->accent.g, theme->accent.b, 255 }
                 });
             }
 
-            /* Option 5: Cursor Style */
+            /* Option 6: Cursor Style */
             const char *cur_style_str = "Bar (|)";
             if (config->editor.cursor_style == TH_CURSOR_BLOCK) {
                 cur_style_str = "Block (█)";
@@ -759,48 +773,48 @@ static void build_settings_modal(const ThUIState *ui, const ThConfigService *con
 
             CLAY(CLAY_ID("SettingRowCursorStyle"), {
                 .layout = {
-                    .sizing = { .width = CLAY_SIZING_GROW(0), .height = CLAY_SIZING_FIXED(38) },
-                    .padding = { .left = 12, .right = 12 },
+                    .sizing = { .width = CLAY_SIZING_GROW(0), .height = CLAY_SIZING_FIXED(46) },
+                    .padding = { .left = 16, .right = 16 },
                     .layoutDirection = CLAY_LEFT_TO_RIGHT,
                     .childAlignment = { .y = CLAY_ALIGN_Y_CENTER },
                     .childGap = 16
                 },
                 .backgroundColor = { theme->bg_main.r, theme->bg_main.g, theme->bg_main.b, 255 },
-                .cornerRadius = CLAY_CORNER_RADIUS(4)
+                .cornerRadius = CLAY_CORNER_RADIUS(6)
             }) {
                 CLAY_TEXT(clay_str("Cursor Style:"), {
-                    .fontSize = 14,
-                    .textColor = { theme->text_normal.r, theme->text_normal.g, theme->text_normal.b, 255 }
+                    .fontSize = 15,
+                    .textColor = { 240, 240, 245, 255 }
                 });
 
                 Clay_String csval = ui_dyn_str("[ %s ]  (Press 'C' to cycle: Bar / Block / Underline)", cur_style_str);
                 CLAY_TEXT(csval, {
-                    .fontSize = 13,
+                    .fontSize = 14,
                     .textColor = { theme->accent.r, theme->accent.g, theme->accent.b, 255 }
                 });
             }
 
-            /* Option 6: Cursor Blink */
+            /* Option 7: Cursor Blink */
             const char *blink_str = config->editor.cursor_blink ? "Enabled (Blinking)" : "Disabled (Solid)";
             CLAY(CLAY_ID("SettingRowCursorBlink"), {
                 .layout = {
-                    .sizing = { .width = CLAY_SIZING_GROW(0), .height = CLAY_SIZING_FIXED(38) },
-                    .padding = { .left = 12, .right = 12 },
+                    .sizing = { .width = CLAY_SIZING_GROW(0), .height = CLAY_SIZING_FIXED(46) },
+                    .padding = { .left = 16, .right = 16 },
                     .layoutDirection = CLAY_LEFT_TO_RIGHT,
                     .childAlignment = { .y = CLAY_ALIGN_Y_CENTER },
                     .childGap = 16
                 },
                 .backgroundColor = { theme->bg_main.r, theme->bg_main.g, theme->bg_main.b, 255 },
-                .cornerRadius = CLAY_CORNER_RADIUS(4)
+                .cornerRadius = CLAY_CORNER_RADIUS(6)
             }) {
                 CLAY_TEXT(clay_str("Cursor Blink:"), {
-                    .fontSize = 14,
-                    .textColor = { theme->text_normal.r, theme->text_normal.g, theme->text_normal.b, 255 }
+                    .fontSize = 15,
+                    .textColor = { 240, 240, 245, 255 }
                 });
 
                 Clay_String cbval = ui_dyn_str("[ %s ]  (Press 'B' to toggle)", blink_str);
                 CLAY_TEXT(cbval, {
-                    .fontSize = 13,
+                    .fontSize = 14,
                     .textColor = { theme->accent.r, theme->accent.g, theme->accent.b, 255 }
                 });
             }
@@ -813,8 +827,8 @@ static void build_settings_modal(const ThUIState *ui, const ThConfigService *con
                 }
             }) {
                 CLAY_TEXT(clay_str("Press Esc or Ctrl+, to close | Ctrl+T: Theme | L: Lines | F: Font | +/-: Size | T: Tab | C: Cursor | B: Blink"), {
-                    .fontSize = 12,
-                    .textColor = { theme->text_gutter.r, theme->text_gutter.g, theme->text_gutter.b, 255 }
+                    .fontSize = 13,
+                    .textColor = { 180, 180, 195, 255 }
                 });
             }
         }

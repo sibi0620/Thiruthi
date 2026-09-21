@@ -804,8 +804,8 @@ static void handle_mouse_input(ThiruthiApp *app) {
 
         /* Settings Modal Click Handling */
         if (app->ui.settings_open) {
-            float mw = 620.0f;
-            float mh = 480.0f;
+            float mw = 720.0f;
+            float mh = 560.0f;
             float mx = ((float)app->renderer.window_width - mw) / 2.0f;
             float my = ((float)app->renderer.window_height - mh) / 2.0f;
 
@@ -816,7 +816,7 @@ static void handle_mouse_input(ThiruthiApp *app) {
             }
 
             /* Row 1: Line Numbers Mode */
-            if (mouse.y >= my + 55 && mouse.y <= my + 105) {
+            if (mouse.y >= my + 65 && mouse.y <= my + 118) {
                 if (app->config.editor.line_number_mode == TH_LINE_NUMBERS_STATIC) {
                     app->config.editor.line_number_mode = TH_LINE_NUMBERS_RELATIVE;
                     th_ui_set_status(&app->ui, "Line numbers: Relative (Vim-style)", TH_STATUS_INFO);
@@ -831,7 +831,7 @@ static void handle_mouse_input(ThiruthiApp *app) {
             }
 
             /* Row 2: Theme */
-            if (mouse.y >= my + 105 && mouse.y <= my + 155) {
+            if (mouse.y >= my + 120 && mouse.y <= my + 174) {
                 ThThemeId next_theme = (ThThemeId)((app->config.editor.theme_id + 1) % TH_THEME_COUNT);
                 th_config_set_theme(&app->config, next_theme);
                 th_ui_set_status(&app->ui, th_config_get_theme_name(next_theme), TH_STATUS_INFO);
@@ -839,13 +839,13 @@ static void handle_mouse_input(ThiruthiApp *app) {
             }
 
             /* Row 3: Editor Font */
-            if (mouse.y >= my + 155 && mouse.y <= my + 205) {
+            if (mouse.y >= my + 176 && mouse.y <= my + 230) {
                 cycle_editor_font(app);
                 return;
             }
 
             /* Row 4: Font Size (+2 px, cycles at 26) */
-            if (mouse.y >= my + 205 && mouse.y <= my + 255) {
+            if (mouse.y >= my + 232 && mouse.y <= my + 286) {
                 app->config.editor.font_size += 2;
                 if (app->config.editor.font_size > 26) app->config.editor.font_size = 12;
                 app->config.editor.line_height = app->config.editor.font_size + 8;
@@ -857,7 +857,7 @@ static void handle_mouse_input(ThiruthiApp *app) {
             }
 
             /* Row 5: Tab Size */
-            if (mouse.y >= my + 255 && mouse.y <= my + 305) {
+            if (mouse.y >= my + 288 && mouse.y <= my + 342) {
                 if (app->config.editor.tab_size == 2) app->config.editor.tab_size = 4;
                 else if (app->config.editor.tab_size == 4) app->config.editor.tab_size = 8;
                 else app->config.editor.tab_size = 2;
@@ -868,7 +868,7 @@ static void handle_mouse_input(ThiruthiApp *app) {
             }
 
             /* Row 6: Cursor Style */
-            if (mouse.y >= my + 305 && mouse.y <= my + 355) {
+            if (mouse.y >= my + 344 && mouse.y <= my + 398) {
                 if (app->config.editor.cursor_style == TH_CURSOR_BAR) {
                     app->config.editor.cursor_style = TH_CURSOR_BLOCK;
                     th_ui_set_status(&app->ui, "Cursor style: Block (█)", TH_STATUS_INFO);
@@ -884,7 +884,7 @@ static void handle_mouse_input(ThiruthiApp *app) {
             }
 
             /* Row 7: Cursor Blink */
-            if (mouse.y >= my + 355 && mouse.y <= my + 405) {
+            if (mouse.y >= my + 400 && mouse.y <= my + 456) {
                 app->config.editor.cursor_blink = !app->config.editor.cursor_blink;
                 char bmsg[64];
                 snprintf(bmsg, sizeof(bmsg), "Cursor blink: %s", app->config.editor.cursor_blink ? "Enabled" : "Disabled");
@@ -897,20 +897,20 @@ static void handle_mouse_input(ThiruthiApp *app) {
         }
 
         /* Click Header Buttons */
-        if (mouse.y >= 0 && mouse.y <= 38) {
+        if (mouse.y >= 0 && mouse.y <= 42) {
             float right_offset = (float)app->renderer.window_width;
-            if (mouse.x >= right_offset - 105 && mouse.x <= right_offset - 8) {
+            if (mouse.x >= right_offset - 114 && mouse.x <= right_offset - 10) {
                 app->ui.settings_open = !app->ui.settings_open;
                 if (app->ui.settings_open) {
                     th_ui_set_status(&app->ui, "Settings opened", TH_STATUS_INFO);
                 }
-            } else if (mouse.x >= right_offset - 203 && mouse.x < right_offset - 105) {
+            } else if (mouse.x >= right_offset - 226 && mouse.x < right_offset - 114) {
                 app->ui.problems_panel_open = !app->ui.problems_panel_open;
-            } else if (mouse.x >= right_offset - 276 && mouse.x < right_offset - 203) {
+            } else if (mouse.x >= right_offset - 312 && mouse.x < right_offset - 226) {
                 trigger_lint(app);
-            } else if (mouse.x >= right_offset - 359 && mouse.x < right_offset - 276) {
+            } else if (mouse.x >= right_offset - 408 && mouse.x < right_offset - 312) {
                 trigger_format(app);
-            } else if (mouse.x >= right_offset - 432 && mouse.x < right_offset - 359) {
+            } else if (mouse.x >= right_offset - 496 && mouse.x < right_offset - 408) {
                 trigger_save(app);
             }
             return;
@@ -920,7 +920,7 @@ static void handle_mouse_input(ThiruthiApp *app) {
         float gutter_w = 56.0f;
         float sidebar_w = app->ui.sidebar_open ? 220.0f : 0.0f;
         float code_x = sidebar_w + gutter_w;
-        float code_y = 38.0f;
+        float code_y = 70.0f;
 
         if (mouse.x >= code_x && mouse.y >= code_y) {
             int line_h = app->config.editor.line_height;

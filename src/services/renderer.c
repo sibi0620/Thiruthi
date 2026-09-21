@@ -28,8 +28,17 @@ Color th_color_to_raylib(ThColor c) {
 
 static Clay_Dimensions Raylib_MeasureText(Clay_StringSlice text, Clay_TextElementConfig *config, void *userData) {
     Clay_Dimensions size = {0, 0};
-    Font *font = (Font *)userData;
-    Font fontToUse = (font && font->glyphs) ? *font : GetFontDefault();
+    ThRendererService *service = (ThRendererService *)userData;
+    Font fontToUse;
+    if (config && config->fontId == 1 && service && service->editor_font.glyphs) {
+        fontToUse = service->editor_font;
+    } else if (service && service->ui_font.glyphs) {
+        fontToUse = service->ui_font;
+    } else if (service && service->editor_font.glyphs) {
+        fontToUse = service->editor_font;
+    } else {
+        fontToUse = GetFontDefault();
+    }
 
     float fontSize = (float)config->fontSize;
     if (fontSize <= 0) fontSize = 16.0f;
@@ -329,7 +338,7 @@ static void th_render_code_canvas_custom(Rectangle bb, const ThCodeCanvasRenderD
 
 /* --- Clay Raylib Render Dispatcher --- */
 
-static void Clay_Raylib_Render(Clay_RenderCommandArray renderCommands, Font *fonts) {
+static void Clay_Raylib_Render(Clay_RenderCommandArray renderCommands, ThRendererService *service) {
     char *temp_str_buf = NULL;
     size_t temp_str_cap = 0;
 
@@ -341,13 +350,22 @@ static void Clay_Raylib_Render(Clay_RenderCommandArray renderCommands, Font *fon
             case CLAY_RENDER_COMMAND_TYPE_CUSTOM: {
                 Clay_CustomRenderData *custom = &cmd->renderData.custom;
                 if (custom->customData) {
-                    th_render_code_canvas_custom(bb, (const ThCodeCanvasRenderData *)custom->customData, fonts);
+                    th_render_code_canvas_custom(bb, (const ThCodeCanvasRenderData *)custom->customData, service ? &service->editor_font : NULL);
                 }
                 break;
             }
             case CLAY_RENDER_COMMAND_TYPE_TEXT: {
                 Clay_TextRenderData *textData = &cmd->renderData.text;
-                Font fontToUse = (fonts && fonts->glyphs) ? *fonts : GetFontDefault();
+                Font fontToUse;
+                if (textData->fontId == 1 && service && service->editor_font.glyphs) {
+                    fontToUse = service->editor_font;
+                } else if (service && service->ui_font.glyphs) {
+                    fontToUse = service->ui_font;
+                } else if (service && service->editor_font.glyphs) {
+                    fontToUse = service->editor_font;
+                } else {
+                    fontToUse = GetFontDefault();
+                }
 
                 size_t needed = textData->stringContents.length + 1;
                 if (needed > temp_str_cap) {
@@ -444,14 +462,23 @@ void th_renderer_init(ThRendererService *service, int width, int height, const c
     Clay_Arena arena = Clay_CreateArenaWithCapacityAndMemory(service->clay_memory_size, service->clay_memory);
     Clay_Initialize(arena, (Clay_Dimensions){(float)width, (float)height}, (Clay_ErrorHandler){handle_clay_error, NULL});
 
-    Clay_SetMeasureTextFunction(Raylib_MeasureText, &service->editor_font);
+    Clay_SetMeasureTextFunction(Raylib_MeasureText, service);
 
     /* Font Setup */
     service->font_loaded = false;
     service->editor_font = GetFontDefault();
     service->ui_font = GetFontDefault();
 
-    /* Try to load crisp system font (Consolas / Cascadia Mono on Windows) */
+#if TH_PLATFORM_WINDOWS
+    if (FileExists("C:\\Windows\\Fonts\\segoeui.ttf")) {
+        service->ui_font = LoadFontEx("C:\\Windows\\Fonts\\segoeui.ttf", 36, NULL, 0);
+        if (service->ui_font.texture.id > 0) {
+            SetTextureFilter(service->ui_font.texture, 1);
+        }
+    }
+#endif
+
+    /* Try to load crisp editor font */
     th_renderer_load_font(service, NULL, 17);
 }
 
@@ -492,10 +519,9 @@ bool th_renderer_load_font(ThRendererService *service, const char *font_path, in
                     UnloadFont(service->editor_font);
                 }
                 service->editor_font = loaded;
-                service->ui_font = loaded;
                 service->font_loaded = true;
 
-                Clay_SetMeasureTextFunction(Raylib_MeasureText, &service->editor_font);
+                Clay_SetMeasureTextFunction(Raylib_MeasureText, service);
                 printf("[FONT] Successfully loaded font: %s (size %d)\n", candidates[i], font_size);
                 return true;
             }
@@ -511,6 +537,10 @@ void th_renderer_shutdown(ThRendererService *service) {
     if (service->font_loaded) {
         UnloadFont(service->editor_font);
         service->font_loaded = false;
+    }
+    if (service->ui_font.texture.id > 0 && service->ui_font.texture.id != GetFontDefault().texture.id) {
+        UnloadFont(service->ui_font);
+        service->ui_font = GetFontDefault();
     }
 
     if (service->clay_memory) {
@@ -568,7 +598,7 @@ void th_renderer_end_frame(ThRendererService *service, const ThTheme *theme) {
     BeginDrawing();
     ClearBackground(theme ? th_color_to_raylib(theme->bg_main) : (Color){24, 24, 24, 255});
 
-    Clay_Raylib_Render(commands, &service->editor_font);
+    Clay_Raylib_Render(commands, service);
 
     EndDrawing();
 }
