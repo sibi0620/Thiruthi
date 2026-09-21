@@ -67,6 +67,12 @@ void th_parser_shutdown(ThParserService *service) {
         service->dl_handle = NULL;
     }
 
+    if (service->source_text) {
+        th_free(service->source_text);
+        service->source_text = NULL;
+    }
+    service->source_len = 0;
+
     if (service->highlight_lines) {
         for (size_t i = 0; i < service->line_count; i++) {
             highlight_line_free(&service->highlight_lines[i]);
@@ -492,7 +498,25 @@ bool th_parser_parse_buffer(ThParserService *service, const char *source, size_t
     ensure_highlight_lines(service, line_count > 0 ? line_count : 1);
 
     if (!source || length == 0) {
+        if (service->source_text) {
+            th_free(service->source_text);
+            service->source_text = NULL;
+        }
+        service->source_len = 0;
         return true;
+    }
+
+    /* Cache current source for AST queries */
+    if (service->source_text) {
+        th_free(service->source_text);
+    }
+    service->source_text = (char *)th_malloc(length + 1);
+    if (service->source_text) {
+        memcpy(service->source_text, source, length);
+        service->source_text[length] = '\0';
+        service->source_len = length;
+    } else {
+        service->source_len = 0;
     }
 
     bool tree_sitter_success = false;
@@ -543,4 +567,56 @@ bool th_parser_parse_buffer(ThParserService *service, const char *source, size_t
 const ThHighlightLine *th_parser_get_line_highlights(const ThParserService *service, size_t line_idx) {
     if (!service || line_idx >= service->line_count) return NULL;
     return &service->highlight_lines[line_idx];
+}
+
+bool th_parser_get_enclosing_scope(const ThParserService *service, uint32_t line, char *buf, size_t buf_size) {
+    if (!service || !buf || buf_size == 0) return false;
+    buf[0] = '\0';
+    if (!service->ts_tree || !service->source_text || service->source_len == 0) return false;
+
+    TSNode root = ts_tree_root_node(service->ts_tree);
+    TSPoint pt = { .row = line, .column = 0 };
+    TSNode node = ts_node_descendant_for_point_range(root, pt, pt);
+
+    while (!ts_node_is_null(node)) {
+        const char *type = ts_node_type(node);
+        if (strcmp(type, "function_definition") == 0 ||
+            strcmp(type, "struct_specifier") == 0 ||
+            strcmp(type, "enum_specifier") == 0 ||
+            strcmp(type, "class_specifier") == 0) {
+
+            /* Find declarator or name child */
+            TSNode target = ts_node_child_by_field_name(node, "declarator", 10);
+            if (ts_node_is_null(target)) {
+                target = ts_node_child_by_field_name(node, "name", 4);
+            }
+            if (ts_node_is_null(target)) {
+                target = node;
+            }
+
+            uint32_t sb = ts_node_start_byte(target);
+            uint32_t eb = ts_node_end_byte(target);
+            if (eb > sb && sb < service->source_len) {
+                size_t len = eb - sb;
+                /* Stop before opening brace or newline */
+                for (size_t k = 0; k < len; k++) {
+                    char ch = service->source_text[sb + k];
+                    if (ch == '\n' || ch == '\r' || ch == '{') {
+                        len = k;
+                        break;
+                    }
+                }
+                while (len > 0 && isspace((unsigned char)service->source_text[sb + len - 1])) {
+                    len--;
+                }
+                if (len >= buf_size) len = buf_size - 1;
+                memcpy(buf, service->source_text + sb, len);
+                buf[len] = '\0';
+                return true;
+            }
+            break;
+        }
+        node = ts_node_parent(node);
+    }
+    return false;
 }

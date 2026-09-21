@@ -25,6 +25,10 @@ typedef struct {
     ThHighlightLine *highlight_lines;
     size_t line_count;
     size_t line_capacity;
+
+    /* Current source copy for AST node queries */
+    char *source_text;
+    size_t source_len;
 } ThParserService;
 
 void th_parser_init(ThParserService *service);
@@ -44,6 +48,11 @@ bool th_parser_parse_buffer(ThParserService *service, const char *source, size_t
  * @brief Retrieve highlight spans for a specific line (0-indexed).
  */
 const ThHighlightLine *th_parser_get_line_highlights(const ThParserService *service, size_t line_idx);
+
+/**
+ * @brief Retrieve current enclosing scope (function/struct/class) at line.
+ */
+bool th_parser_get_enclosing_scope(const ThParserService *service, uint32_t line, char *buf, size_t buf_size);
 
 #ifdef __cplusplus
 }
