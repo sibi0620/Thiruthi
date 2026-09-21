@@ -67,6 +67,14 @@ typedef enum {
     TH_CURSOR_UNDERLINE = 2  /* Bottom underline: _ */
 } ThCursorStyle;
 
+typedef enum {
+    TH_THEME_GRUBER = 0,
+    TH_THEME_NORD,
+    TH_THEME_MONOKAI,
+    TH_THEME_SOLARIZED,
+    TH_THEME_COUNT
+} ThThemeId;
+
 typedef struct {
     int tab_size;
     bool use_spaces;
@@ -83,6 +91,7 @@ typedef struct {
     bool show_status_bar;
     bool show_sidebar;
     bool show_problems_panel;
+    ThThemeId theme_id;
     ThTheme theme;
 } ThEditorConfig;
 
@@ -97,6 +106,8 @@ void th_config_shutdown(ThConfigService *config);
 ThLanguageId th_config_detect_language(const ThConfigService *config, const char *filepath);
 const ThLanguageConfig *th_config_get_language(const ThConfigService *config, ThLanguageId lang);
 const ThTheme *th_config_get_theme(const ThConfigService *config);
+const char *th_config_get_theme_name(ThThemeId theme_id);
+bool th_config_set_theme(ThConfigService *config, ThThemeId theme_id);
 ThColor th_config_get_token_color(const ThTheme *theme, ThTokenType token_type);
 
 #ifdef __cplusplus

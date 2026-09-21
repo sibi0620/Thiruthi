@@ -5,6 +5,8 @@
 
 #include "config.h"
 #include "../common/platform.h"
+#include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 static const char *s_c_extensions[] = {".c", ".h"};
@@ -21,6 +23,13 @@ static const char *s_markdown_extensions[] = {".md", ".markdown"};
 #else
     #define SO_EXT ".so"
 #endif
+
+static const char *s_theme_names[TH_THEME_COUNT] = {
+    "Gruber Darker",
+    "Nord",
+    "Monokai",
+    "Solarized Dark"
+};
 
 void th_config_init(ThConfigService *config) {
     if (!config) return;
@@ -39,13 +48,14 @@ void th_config_init(ThConfigService *config) {
     config->editor.cursor_blink = true;
     config->editor.cursor_blink_rate = 0.5f;
 #if TH_PLATFORM_WINDOWS
-    strncpy(config->editor.font_path, "C:\\Windows\\Fonts\\consola.ttf", sizeof(config->editor.font_path) - 1);
+    strncpy(config->editor.font_path, "C:\\Windows\\Fonts\\CascadiaMono.ttf", sizeof(config->editor.font_path) - 1);
 #else
     config->editor.font_path[0] = '\0';
 #endif
     config->editor.show_status_bar = true;
     config->editor.show_sidebar = false;
     config->editor.show_problems_panel = false;
+    config->editor.theme_id = TH_THEME_GRUBER;
 
     /* Theme: Gruber Darker palette */
     config->editor.theme = (ThTheme){
@@ -198,6 +208,83 @@ void th_config_init(ThConfigService *config) {
     };
 }
 
+const char *th_config_get_theme_name(ThThemeId theme_id) {
+    if (theme_id < 0 || theme_id >= TH_THEME_COUNT) return s_theme_names[TH_THEME_GRUBER];
+    return s_theme_names[theme_id];
+}
+
+bool th_config_set_theme(ThConfigService *config, ThThemeId theme_id) {
+    if (!config || theme_id < 0 || theme_id >= TH_THEME_COUNT) return false;
+
+    config->editor.theme_id = theme_id;
+    switch (theme_id) {
+        case TH_THEME_GRUBER:
+            config->editor.theme = (ThTheme){
+                .bg_main = {24, 24, 24, 255}, .bg_surface = {40, 40, 40, 255},
+                .bg_gutter = {16, 16, 16, 255}, .bg_active_line = {45, 45, 45, 160},
+                .bg_selection = {72, 72, 72, 200}, .text_normal = {228, 228, 239, 255},
+                .text_gutter = {95, 98, 127, 255}, .text_gutter_active = {255, 221, 51, 255},
+                .cursor = {255, 221, 51, 255}, .border = {69, 61, 65, 255}, .accent = {255, 221, 51, 255},
+                .diag_error = {244, 56, 65, 255}, .diag_warning = {255, 221, 51, 255},
+                .diag_info = {150, 166, 200, 255}, .diag_hint = {149, 169, 159, 255},
+                .token_keyword = {255, 221, 51, 255}, .token_type = {149, 169, 159, 255},
+                .token_function = {150, 166, 200, 255}, .token_string = {115, 201, 54, 255},
+                .token_number = {158, 149, 199, 255}, .token_comment = {204, 140, 60, 255},
+                .token_operator = {149, 169, 159, 255}, .token_preprocessor = {204, 140, 60, 255},
+                .token_variable = {228, 228, 239, 255}, .token_punctuation = {149, 169, 159, 255}
+            };
+            break;
+        case TH_THEME_NORD:
+            config->editor.theme = (ThTheme){
+                .bg_main = {46, 52, 64, 255}, .bg_surface = {59, 66, 82, 255}, .bg_gutter = {36, 41, 51, 255},
+                .bg_active_line = {67, 76, 94, 180}, .bg_selection = {76, 86, 106, 220}, .text_normal = {216, 222, 233, 255},
+                .text_gutter = {129, 139, 161, 255}, .text_gutter_active = {136, 192, 208, 255}, .cursor = {136, 192, 208, 255},
+                .border = {76, 86, 106, 255}, .accent = {136, 192, 208, 255}, .diag_error = {191, 97, 106, 255},
+                .diag_warning = {235, 203, 139, 255}, .diag_info = {129, 161, 193, 255}, .diag_hint = {163, 190, 140, 255},
+                .token_keyword = {129, 161, 193, 255}, .token_type = {143, 188, 187, 255}, .token_function = {136, 192, 208, 255},
+                .token_string = {163, 190, 140, 255}, .token_number = {180, 142, 173, 255}, .token_comment = {97, 110, 127, 255},
+                .token_operator = {129, 161, 193, 255}, .token_preprocessor = {143, 188, 187, 255}, .token_variable = {216, 222, 233, 255},
+                .token_punctuation = {216, 222, 233, 255}
+            };
+            break;
+        case TH_THEME_MONOKAI:
+            config->editor.theme = config->editor.theme;
+            config->editor.theme.bg_main = (ThColor){39, 40, 34, 255};
+            config->editor.theme.bg_surface = (ThColor){49, 50, 44, 255};
+            config->editor.theme.bg_gutter = (ThColor){30, 31, 28, 255};
+            config->editor.theme.bg_active_line = (ThColor){62, 63, 55, 180};
+            config->editor.theme.bg_selection = (ThColor){73, 72, 62, 220};
+            config->editor.theme.text_normal = (ThColor){248, 248, 242, 255};
+            config->editor.theme.cursor = (ThColor){249, 38, 114, 255};
+            config->editor.theme.accent = (ThColor){166, 226, 46, 255};
+            config->editor.theme.token_keyword = (ThColor){249, 38, 114, 255};
+            config->editor.theme.token_type = (ThColor){102, 217, 239, 255};
+            config->editor.theme.token_function = (ThColor){166, 226, 46, 255};
+            config->editor.theme.token_string = (ThColor){230, 219, 116, 255};
+            config->editor.theme.token_comment = (ThColor){117, 113, 94, 255};
+            break;
+        case TH_THEME_SOLARIZED:
+            config->editor.theme = config->editor.theme;
+            config->editor.theme.bg_main = (ThColor){0, 43, 54, 255};
+            config->editor.theme.bg_surface = (ThColor){7, 54, 66, 255};
+            config->editor.theme.bg_gutter = (ThColor){0, 35, 44, 255};
+            config->editor.theme.bg_active_line = (ThColor){12, 67, 79, 180};
+            config->editor.theme.bg_selection = (ThColor){38, 79, 87, 220};
+            config->editor.theme.text_normal = (ThColor){238, 232, 213, 255};
+            config->editor.theme.cursor = (ThColor){181, 137, 0, 255};
+            config->editor.theme.accent = (ThColor){42, 161, 152, 255};
+            config->editor.theme.token_keyword = (ThColor){133, 153, 0, 255};
+            config->editor.theme.token_type = (ThColor){42, 161, 152, 255};
+            config->editor.theme.token_function = (ThColor){38, 139, 210, 255};
+            config->editor.theme.token_string = (ThColor){42, 161, 152, 255};
+            config->editor.theme.token_comment = (ThColor){88, 110, 117, 255};
+            break;
+        default:
+            return false;
+    }
+    return true;
+}
+
 void th_config_shutdown(ThConfigService *config) {
     (void)config;
 }
@@ -221,9 +308,8 @@ ThLanguageId th_config_detect_language(const ThConfigService *config, const char
 }
 
 const ThLanguageConfig *th_config_get_language(const ThConfigService *config, ThLanguageId lang) {
-    if (!config || lang < 0 || lang >= TH_LANG_COUNT) {
-        return &config->languages[TH_LANG_UNKNOWN];
-    }
+    if (!config) return NULL;
+    if (lang < 0 || lang >= TH_LANG_COUNT) return &config->languages[TH_LANG_UNKNOWN];
     return &config->languages[lang];
 }
 

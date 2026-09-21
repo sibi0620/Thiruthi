@@ -1,0 +1,8 @@
+CompileFlags:
+  Add:
+    - -xc
+    - -std=c11
+    - -D_CRT_SECURE_NO_WARNINGS
+    - -IC:/Users/Harini.p/Thiruthi/src
+    - -IC:/Users/Harini.p/Thiruthi/deps/usr/include
+    - -IC:/msys64/ucrt64/include
