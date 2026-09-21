@@ -48,7 +48,24 @@ void th_config_init(ThConfigService *config) {
     config->editor.cursor_blink = true;
     config->editor.cursor_blink_rate = 0.5f;
 #if TH_PLATFORM_WINDOWS
-    strncpy(config->editor.font_path, "C:\\Windows\\Fonts\\CascadiaMono.ttf", sizeof(config->editor.font_path) - 1);
+    const char *local_app_data = getenv("LOCALAPPDATA");
+    char iosevka_test[512] = {0};
+    if (local_app_data && local_app_data[0]) {
+        snprintf(iosevka_test, sizeof(iosevka_test), "%s\\Microsoft\\Windows\\Fonts\\iosevka-regular.ttf", local_app_data);
+    }
+    FILE *f_test = iosevka_test[0] ? fopen(iosevka_test, "rb") : NULL;
+    if (f_test) {
+        fclose(f_test);
+        snprintf(config->editor.font_path, sizeof(config->editor.font_path), "%s", iosevka_test);
+    } else {
+        f_test = fopen("C:\\Windows\\Fonts\\JetBrainsMonoNerdFont-Regular.ttf", "rb");
+        if (f_test) {
+            fclose(f_test);
+            snprintf(config->editor.font_path, sizeof(config->editor.font_path), "%s", "C:\\Windows\\Fonts\\JetBrainsMonoNerdFont-Regular.ttf");
+        } else {
+            snprintf(config->editor.font_path, sizeof(config->editor.font_path), "%s", "C:\\Windows\\Fonts\\CascadiaMono.ttf");
+        }
+    }
 #else
     config->editor.font_path[0] = '\0';
 #endif

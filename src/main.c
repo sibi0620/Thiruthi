@@ -272,6 +272,44 @@ static void handle_text_input(ThiruthiApp *app, bool shift, bool ctrl, bool alt,
     }
 }
 
+static void cycle_editor_font(ThiruthiApp *app) {
+    static int s_font_idx = 0;
+    static char s_iosevka_path[512] = {0};
+
+    if (s_iosevka_path[0] == '\0') {
+        const char *local_app_data = getenv("LOCALAPPDATA");
+        if (local_app_data && local_app_data[0]) {
+            snprintf(s_iosevka_path, sizeof(s_iosevka_path), "%s\\Microsoft\\Windows\\Fonts\\iosevka-regular.ttf", local_app_data);
+        } else {
+            strncpy(s_iosevka_path, "C:\\Windows\\Fonts\\iosevka-regular.ttf", sizeof(s_iosevka_path) - 1);
+        }
+    }
+
+    const char *fonts[] = {
+        s_iosevka_path,
+        "C:\\Windows\\Fonts\\JetBrainsMonoNerdFont-Regular.ttf",
+        "C:\\Windows\\Fonts\\CascadiaMono.ttf",
+        "C:\\Windows\\Fonts\\consola.ttf",
+        "C:\\Windows\\Fonts\\cour.ttf"
+    };
+    const char *font_names[] = {
+        "Iosevka (TTF)",
+        "JetBrains Mono (TTF)",
+        "Cascadia Mono",
+        "Consolas",
+        "Courier New"
+    };
+    int font_count = (int)(sizeof(fonts) / sizeof(fonts[0]));
+
+    s_font_idx = (s_font_idx + 1) % font_count;
+    strncpy(app->config.editor.font_path, fonts[s_font_idx], sizeof(app->config.editor.font_path) - 1);
+    th_renderer_load_font(&app->renderer, app->config.editor.font_path, app->config.editor.font_size);
+
+    char fmsg[128];
+    snprintf(fmsg, sizeof(fmsg), "Font changed to: %s", font_names[s_font_idx]);
+    th_ui_set_status(&app->ui, fmsg, TH_STATUS_INFO);
+}
+
 static void handle_keyboard_input(ThiruthiApp *app) {
     bool ctrl = IsKeyDown(KEY_LEFT_CONTROL) || IsKeyDown(KEY_RIGHT_CONTROL);
     bool shift = IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT);
@@ -368,23 +406,7 @@ static void handle_keyboard_input(ThiruthiApp *app) {
 
         /* F: Cycle Editor Font */
         if (IsKeyPressed(KEY_F)) {
-            static int s_font_idx = 0;
-            const char *fonts[] = {
-                "C:\\Windows\\Fonts\\CascadiaMono.ttf",
-                "C:\\Windows\\Fonts\\consola.ttf",
-                "C:\\Windows\\Fonts\\cour.ttf"
-            };
-            const char *font_names[] = {
-                "Cascadia Mono",
-                "Consolas",
-                "Courier New"
-            };
-            s_font_idx = (s_font_idx + 1) % 3;
-            strncpy(app->config.editor.font_path, fonts[s_font_idx], sizeof(app->config.editor.font_path) - 1);
-            th_renderer_load_font(&app->renderer, app->config.editor.font_path, app->config.editor.font_size);
-            char fmsg[128];
-            snprintf(fmsg, sizeof(fmsg), "Font changed to: %s", font_names[s_font_idx]);
-            th_ui_set_status(&app->ui, fmsg, TH_STATUS_INFO);
+            cycle_editor_font(app);
             return;
         }
 
@@ -818,25 +840,7 @@ static void handle_mouse_input(ThiruthiApp *app) {
 
             /* Row 3: Editor Font */
             if (mouse.y >= my + 155 && mouse.y <= my + 205) {
-                static int s_mouse_font_idx = 0;
-                const char *fonts[] = {
-                    "C:\\Windows\\Fonts\\CascadiaMono.ttf",
-                    "C:\\Windows\\Fonts\\consola.ttf",
-                    "C:\\Windows\\Fonts\\cour.ttf",
-                    ""
-                };
-                const char *font_names[] = {
-                    "Cascadia Mono",
-                    "Consolas",
-                    "Courier New",
-                    "Raylib Default"
-                };
-                s_mouse_font_idx = (s_mouse_font_idx + 1) % 4;
-                strncpy(app->config.editor.font_path, fonts[s_mouse_font_idx], sizeof(app->config.editor.font_path) - 1);
-                th_renderer_load_font(&app->renderer, app->config.editor.font_path, app->config.editor.font_size);
-                char fmsg[128];
-                snprintf(fmsg, sizeof(fmsg), "Font changed to: %s", font_names[s_mouse_font_idx]);
-                th_ui_set_status(&app->ui, fmsg, TH_STATUS_INFO);
+                cycle_editor_font(app);
                 return;
             }
 

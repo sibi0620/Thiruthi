@@ -468,21 +468,18 @@ bool th_renderer_load_font(ThRendererService *service, const char *font_path, in
     }
 
 #if TH_PLATFORM_WINDOWS
-    /* Check user-local fonts first (.ttf only — .ttc collections don't render in custom canvas) */
+    /* Check user-local fonts first (.ttf only) */
     const char *local_app_data = getenv("LOCALAPPDATA");
     if (local_app_data && local_app_data[0]) {
-        snprintf(local_font_paths[0], sizeof(local_font_paths[0]), "%s\\Microsoft\\Windows\\Fonts\\JetBrainsMono Nerd Font-Regular.ttf", local_app_data);
-        snprintf(local_font_paths[1], sizeof(local_font_paths[1]), "%s\\Microsoft\\Windows\\Fonts\\JetBrainsMono Nerd Font Mono-Regular.ttf", local_app_data);
-        snprintf(local_font_paths[2], sizeof(local_font_paths[2]), "%s\\Microsoft\\Windows\\Fonts\\JetBrainsMonoNL Nerd Font-Regular.ttf", local_app_data);
-        for (int i = 0; i < 3; i++) candidates[cand_count++] = local_font_paths[i];
+        snprintf(local_font_paths[0], sizeof(local_font_paths[0]), "%s\\Microsoft\\Windows\\Fonts\\iosevka-regular.ttf", local_app_data);
+        candidates[cand_count++] = local_font_paths[0];
     }
 #endif
     /* System-wide font candidates (.ttf only) */
+    candidates[cand_count++] = "C:\\Windows\\Fonts\\JetBrainsMonoNerdFont-Regular.ttf";
+    candidates[cand_count++] = "C:\\Windows\\Fonts\\JetBrainsMonoNerdFontMono-Regular.ttf";
     candidates[cand_count++] = "C:\\Windows\\Fonts\\CascadiaMono.ttf";
     candidates[cand_count++] = "C:\\Windows\\Fonts\\consola.ttf";
-    candidates[cand_count++] = "C:\\Windows\\Fonts\\JetBrainsMono Nerd Font-Regular.ttf";
-    candidates[cand_count++] = "C:\\Windows\\Fonts\\JetBrainsMono Nerd Font Mono-Regular.ttf";
-    candidates[cand_count++] = "C:\\Windows\\Fonts\\JetBrainsMonoNL Nerd Font-Regular.ttf";
     candidates[cand_count++] = "C:\\Windows\\Fonts\\cour.ttf";
 
     for (int i = 0; i < cand_count; i++) {
